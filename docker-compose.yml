@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bsb-mvp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bsb
+      POSTGRES_PASSWORD: bsb_local_password
+      POSTGRES_DB: bsb_mvp
+    ports:
+      - '5432:5432'
+    volumes:
+      - bsb_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  bsb_postgres_data:

@@ -1,0 +1,59 @@
+import Link from 'next/link';
+import { SiteHeader } from '@/components/SiteHeader';
+import { getClientOrders } from '@/app/actions/orders';
+import { MATERIAL_LABELS, ORDER_STATUS_LABELS } from '@/lib/utils';
+
+export default async function ClientOrdersPage() {
+  const orders = await getClientOrders();
+
+  return (
+    <div className="min-h-screen bg-surface-muted">
+      <SiteHeader />
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-navy-800">Мои заказы</h1>
+          <Link href="/order/new" className="btn-primary !px-4 !py-2.5 text-sm">
+            Новый заказ
+          </Link>
+        </div>
+
+        {orders.length === 0 ? (
+          <div className="card text-center">
+            <p className="text-navy-500">У вас пока нет заказов.</p>
+            <Link href="/order/new" className="btn-primary mt-4 inline-flex">
+              Заказать бетон
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {orders.map((order) => {
+              const status = ORDER_STATUS_LABELS[order.status];
+              return (
+                <Link
+                  key={order.id}
+                  href={`/client/orders/${order.id}`}
+                  className="card block transition-shadow hover:shadow-lg"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-navy-800">{order.orderNumber}</span>
+                    <span className="text-sm">
+                      {status.emoji} {status.label}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-navy-500">
+                    {MATERIAL_LABELS[order.materialType]}
+                    {order.concreteGrade ? ` • ${order.concreteGrade}` : ''} • {order.quantity} м³
+                  </p>
+                  <p className="mt-1 text-sm text-navy-400">{order.addressText}</p>
+                  {order.plant && (
+                    <p className="mt-1 text-sm font-medium text-navy-600">Завод: {order.plant.name}</p>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+
+// Middleware работает в Edge Runtime, поэтому не импортируем Prisma/next/headers helpers,
+// а разбираем cookie напрямую тем же алгоритмом, что и lib/session.ts.
+
+const COOKIE_NAME = 'bsb_session';
+const SECRET = process.env.SESSION_SECRET || 'dev-only-insecure-secret-change-me';
+
+function verify(token: string): { role: string } | null {
+  const [base64, signature] = token.split('.');
+  if (!base64 || !signature) return null;
+  const expected = crypto.createHmac('sha256', SECRET).update(base64).digest('hex');
+  if (signature !== expected) return null;
+  try {
+    return JSON.parse(Buffer.from(base64, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+const ROLE_PREFIXES: { prefix: string; role: string }[] = [
+  { prefix: '/admin', role: 'ADMIN' },
+  { prefix: '/plant', role: 'PLANT' },
+  { prefix: '/client', role: 'CLIENT' },
+];
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const match = ROLE_PREFIXES.find((r) => pathname.startsWith(r.prefix));
+  if (!match) return NextResponse.next();
+
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+  const session = token ? verify(token) : null;
+
+  if (!session) {
+    const url = new URL('/login', request.url);
+    url.searchParams.set('next', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (session.role !== match.role) {
+    const url = new URL('/', request.url);
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/admin/:path*', '/plant/:path*', '/client/:path*'],
+};

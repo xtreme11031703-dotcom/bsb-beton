@@ -1,0 +1,180 @@
+// БСБ MVP — схема базы данных
+// Роли: CLIENT, PLANT, ADMIN
+// Ключевая логика: Order -> много OrderPlant (доступность заказа заводу),
+// первый завод, который атомарно "берёт" заказ, становится Order.plantId.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  PLANT
+  ADMIN
+}
+
+enum PlantStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MaterialType {
+  CONCRETE
+  SAND
+  GRAVEL
+  CEMENT
+  MORTAR
+  OTHER
+}
+
+enum ConcreteGrade {
+  M100
+  M150
+  M200
+  M250
+  M300
+  M350
+  M400
+  M450
+  M500
+}
+
+enum PumpType {
+  AUTO
+  STATIONARY
+}
+
+enum OrderStatus {
+  NEW
+  SEARCHING_PLANT
+  PLANT_ASSIGNED
+  CONFIRMED
+  IN_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+// Статус конкретного "предложения" заказа конкретному заводу
+enum OrderPlantStatus {
+  AVAILABLE
+  TAKEN
+  EXPIRED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         Role     @default(CLIENT)
+  // Если роль PLANT — пользователь привязан к заводу, от имени которого действует
+  plantId      String?
+  plant        Plant?   @relation(fields: [plantId], references: [id])
+  createdAt    DateTime @default(now())
+
+  ordersAsClient Order[]              @relation("ClientOrders")
+  statusChanges  OrderStatusHistory[]
+}
+
+model Plant {
+  id         String       @id @default(cuid())
+  name       String
+  address    String
+  latitude   Float
+  longitude  Float
+  phone      String
+  status     PlantStatus  @default(ACTIVE)
+  radiusKm   Int          @default(50)
+  materials  MaterialType[]
+  createdAt  DateTime     @default(now())
+
+  users       User[]
+  orders      Order[]       @relation("AssignedOrders")
+  orderPlants OrderPlant[]
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  orderNumber String   @unique // например БСБ-000123
+
+  clientId String
+  client   User   @relation("ClientOrders", fields: [clientId], references: [id])
+
+  plantId String? // назначенный завод (заполняется, когда кто-то "берёт" заказ)
+  plant   Plant?  @relation("AssignedOrders", fields: [plantId], references: [id])
+
+  materialType  MaterialType
+  concreteGrade ConcreteGrade?
+  quantity      Float
+
+  // Доп. характеристики бетона — необязательные для MVP
+  concreteClass       String?
+  mobility            String?
+  frostResistance     String?
+  waterResistance     String?
+  hasFiber            Boolean @default(false)
+  additionalWishes    String?
+
+  pumpRequired Boolean   @default(false)
+  pumpType     PumpType?
+  pumpLength   String? // например "36" или "Другой"
+  pumpNote     String?
+
+  addressText String
+  latitude    Float
+  longitude   Float
+
+  deliveryDate     DateTime
+  deliveryTimeFrom String // "10:00"
+  deliveryTimeTo   String // "12:00"
+
+  contactName  String
+  contactPhone String
+  comment      String?
+
+  status OrderStatus @default(NEW)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  acceptedAt DateTime?
+
+  orderPlants   OrderPlant[]
+  statusHistory OrderStatusHistory[]
+
+  @@index([status])
+  @@index([clientId])
+}
+
+// Связь "заказ доступен заводу" — по одной строке на каждый подходящий завод.
+// Именно эта таблица — центр логики "кто первый, тот и получил".
+model OrderPlant {
+  id        String           @id @default(cuid())
+  orderId   String
+  order     Order            @relation(fields: [orderId], references: [id])
+  plantId   String
+  plant     Plant            @relation(fields: [plantId], references: [id])
+  status    OrderPlantStatus @default(AVAILABLE)
+  distanceKm Float?
+  createdAt DateTime         @default(now())
+  respondedAt DateTime?
+
+  @@unique([orderId, plantId])
+  @@index([plantId, status])
+}
+
+model OrderStatusHistory {
+  id            String      @id @default(cuid())
+  orderId       String
+  order         Order       @relation(fields: [orderId], references: [id])
+  status        OrderStatus
+  note          String?
+  changedByUserId String?
+  changedByUser User?       @relation(fields: [changedByUserId], references: [id])
+  createdAt     DateTime    @default(now())
+}
