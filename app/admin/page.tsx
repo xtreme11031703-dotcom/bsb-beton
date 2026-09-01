@@ -1,7 +1,9 @@
 import { getAdminStats } from '@/app/actions/admin';
+import { getTelegramStatus } from '@/app/actions/telegram';
+import { TelegramLinkCard } from '@/components/TelegramLinkCard';
 
 export default async function AdminDashboardPage() {
-  const stats = await getAdminStats();
+  const [stats, telegramStatus] = await Promise.all([getAdminStats(), getTelegramStatus()]);
 
   const cards = [
     { label: 'Всего заказов', value: stats.total },
@@ -16,6 +18,16 @@ export default async function AdminDashboardPage() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold text-navy-800">Dashboard</h1>
+
+      {telegramStatus && (
+        <div className="mb-6">
+          <TelegramLinkCard
+            initialLinked={telegramStatus.linked}
+            initialCode={telegramStatus.linked ? null : telegramStatus.code}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {cards.map((c) => (
           <div key={c.label} className="card">

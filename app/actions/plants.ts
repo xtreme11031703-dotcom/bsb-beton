@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
+import { sendTelegramMessage } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
 /** Заказы, доступные для завода текущего пользователя (роль PLANT), сгруппированные по статусу. */
@@ -95,7 +96,24 @@ export async function takeOrder(orderId: string): Promise<TakeOrderResult> {
   if (!result.taken) {
     return { ok: false, error: 'Заказ уже забрал другой завод' };
   }
+
+  await notifyClientPlantAssigned(orderId, plantId);
   return { ok: true };
+}
+
+/** Уведомляет клиента в Telegram, что заводу назначен его заказ. */
+async function notifyClientPlantAssigned(orderId: string, plantId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { client: true },
+  });
+  const plant = await prisma.plant.findUnique({ where: { id: plantId } });
+  if (!order?.client.telegramChatId || !plant) return;
+
+  await sendTelegramMessage(
+    order.client.telegramChatId,
+    `🟢 Заказ ${order.orderNumber} — завод найден!\n\n${plant.name}, ${plant.phone}\n\nСледить за статусом: bsb-beton.ru/client/orders/${order.id}`,
+  );
 }
 
 export async function getPlantOrderDetail(orderId: string) {

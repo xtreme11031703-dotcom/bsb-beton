@@ -1,0 +1,130 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { sendTelegramMessage } from '@/lib/telegram';
+import { answerFaq } from '@/lib/telegram-faq';
+import { ORDER_STATUS_LABELS } from '@/lib/utils';
+
+// Telegram шлёт обновления сюда после setWebhook (см. scripts/telegram-set-webhook.ts).
+// Секрет проверяем через заголовок X-Telegram-Bot-Api-Secret-Token — так Telegram
+// подтверждает, что запрос действительно от него, а не от кого попало.
+export async function POST(req: NextRequest) {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (secret) {
+    const header = req.headers.get('x-telegram-bot-api-secret-token');
+    if (header !== secret) {
+      return NextResponse.json({ ok: false }, { status: 401 });
+    }
+  }
+
+  const update = await req.json().catch(() => null);
+  const message = update?.message;
+  const chatId: string | undefined = message?.chat?.id?.toString();
+  const text: string | undefined = message?.text;
+
+  if (!chatId || !text) {
+    return NextResponse.json({ ok: true }); // нечего обрабатывать (не текстовое сообщение и т.п.)
+  }
+
+  await handleMessage(chatId, text.trim());
+  return NextResponse.json({ ok: true });
+}
+
+async function handleMessage(chatId: string, text: string) {
+  // /start или /start CODE (диплинк вида t.me/bot?start=CODE)
+  if (text === '/start' || text.startsWith('/start ')) {
+    const code = text.split(' ')[1];
+    if (code) {
+      await tryLinkAccount(chatId, code);
+      return;
+    }
+    await sendTelegramMessage(
+      chatId,
+      'Привет! Это бот БСБ — бетон с доставкой.\n\n' +
+        'Чтобы получать уведомления по заказу, зайдите в личный кабинет на сайте и нажмите «Получить код», затем отправьте сюда команду /link КОД.\n\n' +
+        'Также можно просто спросить про цены, марки бетона, доставку или адреса заводов — постараюсь ответить.',
+    );
+    return;
+  }
+
+  if (text.startsWith('/link')) {
+    const code = text.split(' ')[1];
+    if (!code) {
+      await sendTelegramMessage(chatId, 'Укажите код после команды, например: /link AB12CD');
+      return;
+    }
+    await tryLinkAccount(chatId, code);
+    return;
+  }
+
+  if (text.startsWith('/status')) {
+    await sendOrderStatusSummary(chatId);
+    return;
+  }
+
+  if (text.startsWith('/help')) {
+    await sendTelegramMessage(
+      chatId,
+      'Команды:\n/link КОД — привязать аккаунт с сайта\n/status — статус ваших последних заказов\n\nИли просто напишите вопрос про бетон, цены или доставку.',
+    );
+    return;
+  }
+
+  // Всё остальное — простой FAQ-помощник по ключевым словам.
+  await sendTelegramMessage(chatId, answerFaq(text));
+}
+
+async function tryLinkAccount(chatId: string, code: string) {
+  const user = await prisma.user.findUnique({ where: { telegramLinkCode: code.toUpperCase() } });
+  if (!user) {
+    await sendTelegramMessage(
+      chatId,
+      'Код не найден или уже использован. Сгенерируйте новый код в личном кабинете на сайте и попробуйте снова.',
+    );
+    return;
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { telegramChatId: chatId, telegramLinkCode: null },
+  });
+
+  const roleText =
+    user.role === 'PLANT'
+      ? 'Теперь сюда будут приходить уведомления о новых заказах для вашего завода.'
+      : user.role === 'ADMIN'
+        ? 'Теперь сюда будут приходить уведомления о новых заказах.'
+        : 'Теперь сюда будут приходить уведомления об изменении статуса ваших заказов.';
+
+  await sendTelegramMessage(chatId, `Готово, ${user.name}! Аккаунт привязан. ${roleText}`);
+}
+
+async function sendOrderStatusSummary(chatId: string) {
+  const user = await prisma.user.findUnique({ where: { telegramChatId: chatId } });
+  if (!user) {
+    await sendTelegramMessage(chatId, 'Сначала привяжите аккаунт: /link КОД (код — в личном кабинете на сайте).');
+    return;
+  }
+
+  if (user.role !== 'CLIENT') {
+    await sendTelegramMessage(chatId, 'Команда /status пока доступна только клиентам.');
+    return;
+  }
+
+  const orders = await prisma.order.findMany({
+    where: { clientId: user.id },
+    orderBy: { createdAt: 'desc' },
+    take: 5,
+  });
+
+  if (orders.length === 0) {
+    await sendTelegramMessage(chatId, 'У вас пока нет заказов. Оформить: bsb-beton.ru/order/new');
+    return;
+  }
+
+  const lines = orders.map((o) => {
+    const status = ORDER_STATUS_LABELS[o.status];
+    return `${o.orderNumber} — ${status.emoji} ${status.label}`;
+  });
+
+  await sendTelegramMessage(chatId, `Ваши последние заказы:\n\n${lines.join('\n')}`);
+}

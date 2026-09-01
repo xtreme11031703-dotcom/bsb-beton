@@ -3,8 +3,21 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
+import { sendTelegramMessage } from '@/lib/telegram';
+import { ORDER_STATUS_LABELS } from '@/lib/utils';
 import { revalidatePath } from 'next/cache';
 import type { OrderStatus } from '@prisma/client';
+
+/** Уведомляет клиента в Telegram об изменении статуса заказа (если бот привязан). */
+async function notifyClientStatusChange(orderId: string, status: OrderStatus) {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { client: true } });
+  if (!order?.client.telegramChatId) return;
+  const label = ORDER_STATUS_LABELS[status];
+  await sendTelegramMessage(
+    order.client.telegramChatId,
+    `${label.emoji} Заказ ${order.orderNumber}: ${label.label}`,
+  );
+}
 
 async function requireAdmin() {
   const session = await getSession();
@@ -120,6 +133,7 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     }),
   ]);
   revalidatePath('/admin/orders');
+  await notifyClientStatusChange(orderId, 'CANCELLED');
   return { ok: true };
 }
 
@@ -132,6 +146,7 @@ export async function changeOrderStatus(orderId: string, status: OrderStatus): P
     }),
   ]);
   revalidatePath('/admin/orders');
+  await notifyClientStatusChange(orderId, status);
   return { ok: true };
 }
 
@@ -160,5 +175,6 @@ export async function assignOrderManually(orderId: string, plantId: string): Pro
     }),
   ]);
   revalidatePath('/admin/orders');
+  await notifyClientStatusChange(orderId, 'PLANT_ASSIGNED');
   return { ok: true };
 }

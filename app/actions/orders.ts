@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getSession, createSession } from '@/lib/session';
 import { hashPassword, verifyPassword } from '@/lib/auth';
-import { generateOrderNumber, distanceKm } from '@/lib/utils';
+import { generateOrderNumber, distanceKm, MATERIAL_LABELS } from '@/lib/utils';
+import { sendTelegramMessageToMany } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
 const orderSchema = z.object({
@@ -147,7 +148,49 @@ export async function submitOrder(input: unknown): Promise<ActionResult> {
   });
 
   revalidatePath('/client/orders');
+  await notifyNewOrder(order.id, orderNumber, data.materialType, data.quantity, matchingPlants.map((m) => m.plant.id));
   return { ok: true, orderId: order.id, orderNumber: order.orderNumber };
+}
+
+/** Уведомляет в Telegram заводы, которым доступен новый заказ, и админов. */
+async function notifyNewOrder(
+  orderId: string,
+  orderNumber: string,
+  materialType: string,
+  quantity: number,
+  matchingPlantIds: string[],
+) {
+  const materialLabel = MATERIAL_LABELS[materialType] ?? materialType;
+  const summary = `${materialLabel}, ${quantity} м³`;
+
+  const [plantUsers, adminUsers] = await Promise.all([
+    matchingPlantIds.length > 0
+      ? prisma.user.findMany({
+          where: { role: 'PLANT', plantId: { in: matchingPlantIds }, telegramChatId: { not: null } },
+          select: { telegramChatId: true },
+        })
+      : Promise.resolve([]),
+    prisma.user.findMany({
+      where: { role: 'ADMIN', telegramChatId: { not: null } },
+      select: { telegramChatId: true },
+    }),
+  ]);
+
+  const plantChatIds = plantUsers.map((u: { telegramChatId: string | null }) => u.telegramChatId!).filter(Boolean);
+  if (plantChatIds.length > 0) {
+    await sendTelegramMessageToMany(
+      plantChatIds,
+      `🆕 Новый заказ ${orderNumber}\n${summary}\n\nПосмотреть и взять: bsb-beton.ru/plant`,
+    );
+  }
+
+  const adminChatIds = adminUsers.map((u: { telegramChatId: string | null }) => u.telegramChatId!).filter(Boolean);
+  if (adminChatIds.length > 0) {
+    await sendTelegramMessageToMany(
+      adminChatIds,
+      `🆕 Новый заказ ${orderNumber}\n${summary}\nДоступен ${matchingPlantIds.length} завод(ам).`,
+    );
+  }
 }
 
 export async function getClientOrders() {

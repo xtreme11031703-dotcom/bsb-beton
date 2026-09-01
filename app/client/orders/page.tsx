@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { SiteHeader } from '@/components/SiteHeader';
 import { getClientOrders } from '@/app/actions/orders';
+import { getTelegramStatus } from '@/app/actions/telegram';
+import { TelegramLinkCard } from '@/components/TelegramLinkCard';
 import { MATERIAL_LABELS, ORDER_STATUS_LABELS } from '@/lib/utils';
 
 export default async function ClientOrdersPage() {
-  const orders = await getClientOrders();
+  const [orders, telegramStatus] = await Promise.all([getClientOrders(), getTelegramStatus()]);
 
   return (
     <div className="min-h-screen bg-surface-muted">
@@ -16,6 +18,15 @@ export default async function ClientOrdersPage() {
             Новый заказ
           </Link>
         </div>
+
+        {telegramStatus && (
+          <div className="mb-6">
+            <TelegramLinkCard
+              initialLinked={telegramStatus.linked}
+              initialCode={telegramStatus.linked ? null : telegramStatus.code}
+            />
+          </div>
+        )}
 
         {orders.length === 0 ? (
           <div className="card text-center">

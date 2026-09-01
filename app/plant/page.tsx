@@ -1,11 +1,13 @@
 import { SiteHeader } from '@/components/SiteHeader';
 import { getPlantOrders } from '@/app/actions/plants';
+import { getTelegramStatus } from '@/app/actions/telegram';
+import { TelegramLinkCard } from '@/components/TelegramLinkCard';
 import { MATERIAL_LABELS, ORDER_STATUS_LABELS, PUMP_TYPE_LABELS } from '@/lib/utils';
 import { TakeOrderButton } from './TakeOrderButton';
 import { PlantOrdersPoller } from './PlantOrdersPoller';
 
 export default async function PlantDashboardPage() {
-  const data = await getPlantOrders();
+  const [data, telegramStatus] = await Promise.all([getPlantOrders(), getTelegramStatus()]);
   if (!data) {
     return (
       <div className="min-h-screen bg-surface-muted">
@@ -27,6 +29,15 @@ export default async function PlantDashboardPage() {
       <PlantOrdersPoller />
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-bold text-navy-800">Заказы</h1>
+
+        {telegramStatus && (
+          <div className="mt-4">
+            <TelegramLinkCard
+              initialLinked={telegramStatus.linked}
+              initialCode={telegramStatus.linked ? null : telegramStatus.code}
+            />
+          </div>
+        )}
 
         <section className="mt-6">
           <h2 className="mb-3 text-sm font-semibold uppercase text-navy-400">

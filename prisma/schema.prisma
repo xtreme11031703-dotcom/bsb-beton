@@ -78,6 +78,11 @@ model User {
   plant        Plant?   @relation(fields: [plantId], references: [id])
   createdAt    DateTime @default(now())
 
+  // Telegram-уведомления: chatId заполняется после того, как пользователь
+  // отправил боту одноразовый код из личного кабинета (см. lib/telegram.ts).
+  telegramChatId   String? @unique
+  telegramLinkCode String? @unique
+
   ordersAsClient Order[]              @relation("ClientOrders")
   statusChanges  OrderStatusHistory[]
 }
