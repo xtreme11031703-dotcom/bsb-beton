@@ -149,6 +149,10 @@ model Order {
   updatedAt  DateTime @updatedAt
   acceptedAt DateTime?
 
+  // Когда админу отправлен алерт "заказ долго висит без завода" — чтобы не
+  // слать его повторно на каждый прогон крона (см. app/api/cron/check-stale-orders).
+  staleAlertSentAt DateTime?
+
   orderPlants   OrderPlant[]
   statusHistory OrderStatusHistory[]
 

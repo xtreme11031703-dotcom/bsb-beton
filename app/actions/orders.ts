@@ -186,10 +186,12 @@ async function notifyNewOrder(
 
   const adminChatIds = adminUsers.map((u: { telegramChatId: string | null }) => u.telegramChatId!).filter(Boolean);
   if (adminChatIds.length > 0) {
-    await sendTelegramMessageToMany(
-      adminChatIds,
-      `🆕 Новый заказ ${orderNumber}\n${summary}\nДоступен ${matchingPlantIds.length} завод(ам).`,
-    );
+    const adminText =
+      matchingPlantIds.length > 0
+        ? `🆕 Новый заказ ${orderNumber}\n${summary}\nДоступен ${matchingPlantIds.length} завод(ам).`
+        : `⚠️ Заказ ${orderNumber} без подходящего завода\n${summary}\n\nНи один завод не подошёл автоматически (материал/радиус доставки) — нужно назначить вручную: bsb-beton.ru/admin/orders`;
+
+    await sendTelegramMessageToMany(adminChatIds, adminText);
   }
 }
 
