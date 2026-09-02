@@ -65,6 +65,11 @@ async function handleMessage(chatId: string, text: string) {
     return;
   }
 
+  if (text.startsWith('/reply')) {
+    await tryReplyToChatThread(chatId, text);
+    return;
+  }
+
   if (text.startsWith('/help')) {
     await sendTelegramMessage(
       chatId,
@@ -111,6 +116,40 @@ async function tryLinkAccount(chatId: string, code: string) {
         : 'Теперь сюда будут приходить уведомления об изменении статуса ваших заказов.';
 
   await sendTelegramMessage(chatId, `Готово, ${user.name}! Аккаунт привязан. ${roleText}`);
+}
+
+/** Позволяет админу ответить в чат с сайта прямо из Telegram, не заходя в
+ * админку: /reply КОД текст ответа — код приходит в уведомлении о новом
+ * сообщении (см. app/actions/chat.ts:notifyAdminsNewChatMessage). */
+async function tryReplyToChatThread(chatId: string, text: string) {
+  const admin = await prisma.user.findFirst({ where: { telegramChatId: chatId, role: 'ADMIN' } });
+  if (!admin) {
+    await sendTelegramMessage(chatId, 'Команда /reply доступна только администраторам.');
+    return;
+  }
+
+  const match = text.match(/^\/reply\s+(\S+)\s+([\s\S]+)$/i);
+  if (!match) {
+    await sendTelegramMessage(chatId, 'Формат: /reply КОД текст ответа (код — в уведомлении о новом сообщении чата).');
+    return;
+  }
+  const [, code, replyText] = match;
+
+  const thread = await prisma.chatThread.findUnique({ where: { shortCode: code.toUpperCase() } });
+  if (!thread) {
+    await sendTelegramMessage(chatId, `Диалог с кодом ${code} не найден.`);
+    return;
+  }
+
+  await prisma.$transaction([
+    prisma.chatMessage.create({ data: { threadId: thread.id, sender: 'ADMIN', text: replyText.trim() } }),
+    prisma.chatThread.update({
+      where: { id: thread.id },
+      data: { lastMessageAt: new Date(), visitorUnread: true, adminUnread: false, status: 'OPEN' },
+    }),
+  ]);
+
+  await sendTelegramMessage(chatId, `Ответ отправлен в чат ${thread.shortCode}.`);
 }
 
 async function sendOrderStatusSummary(chatId: string) {

@@ -150,6 +150,64 @@ export async function changeOrderStatus(orderId: string, status: OrderStatus): P
   return { ok: true };
 }
 
+// ---- Живой чат с сайта ----
+
+export async function getUnreadChatCount(): Promise<number> {
+  await requireAdmin();
+  return prisma.chatThread.count({ where: { adminUnread: true } });
+}
+
+export async function listChatThreads() {
+  await requireAdmin();
+  return prisma.chatThread.findMany({
+    orderBy: [{ status: 'asc' }, { lastMessageAt: 'desc' }],
+    include: {
+      client: { select: { name: true } },
+      messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+    },
+  });
+}
+
+export async function getChatThread(threadId: string) {
+  await requireAdmin();
+  const thread = await prisma.chatThread.findUnique({
+    where: { id: threadId },
+    include: {
+      client: { select: { name: true } },
+      messages: { orderBy: { createdAt: 'asc' } },
+    },
+  });
+  if (thread?.adminUnread) {
+    await prisma.chatThread.update({ where: { id: threadId }, data: { adminUnread: false } });
+  }
+  return thread;
+}
+
+export async function sendAdminReply(threadId: string, text: string): Promise<ActionResult> {
+  await requireAdmin();
+  const trimmed = text.trim();
+  if (!trimmed) return { ok: false, error: 'Пустое сообщение' };
+
+  await prisma.$transaction([
+    prisma.chatMessage.create({ data: { threadId, sender: 'ADMIN', text: trimmed } }),
+    prisma.chatThread.update({
+      where: { id: threadId },
+      data: { lastMessageAt: new Date(), visitorUnread: true, adminUnread: false },
+    }),
+  ]);
+  revalidatePath(`/admin/chats/${threadId}`);
+  revalidatePath('/admin/chats');
+  return { ok: true };
+}
+
+export async function setChatThreadStatus(threadId: string, status: 'OPEN' | 'CLOSED'): Promise<ActionResult> {
+  await requireAdmin();
+  await prisma.chatThread.update({ where: { id: threadId }, data: { status } });
+  revalidatePath('/admin/chats');
+  revalidatePath(`/admin/chats/${threadId}`);
+  return { ok: true };
+}
+
 export async function assignOrderManually(orderId: string, plantId: string): Promise<ActionResult> {
   await requireAdmin();
   const order = await prisma.order.findUnique({ where: { id: orderId } });

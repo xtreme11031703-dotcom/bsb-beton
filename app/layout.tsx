@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
+import { ChatWidget } from '@/components/chat/ChatWidget';
 import './globals.css';
 
 // Inter вместо системного стека — часть редизайна (см. tailwind.config.ts):
@@ -36,6 +37,8 @@ export default function RootLayout({
     <html lang="ru" className={inter.variable}>
       <body className="font-sans">
         {children}
+
+        <ChatWidget />
 
         <Script
           id="yandex-maps"

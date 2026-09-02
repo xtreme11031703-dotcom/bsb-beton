@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SiteHeader } from '@/components/SiteHeader';
+import { getUnreadChatCount } from '@/app/actions/admin';
 
 const NAV = [
   { href: '/admin', label: 'Dashboard' },
@@ -7,9 +8,12 @@ const NAV = [
   { href: '/admin/plants', label: 'Заводы' },
   { href: '/admin/clients', label: 'Клиенты' },
   { href: '/admin/map', label: 'Карта' },
+  { href: '/admin/chats', label: 'Чат' },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const unreadChats = await getUnreadChatCount();
+
   return (
     <div className="min-h-screen bg-surface-muted">
       <SiteHeader />
@@ -20,9 +24,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={item.href}
                 href={item.href}
-                className="block rounded-lg px-3 py-2 text-sm font-medium text-navy-600 hover:bg-surface-border"
+                className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-navy-600 hover:bg-surface-border"
               >
                 {item.label}
+                {item.href === '/admin/chats' && unreadChats > 0 && <UnreadBadge count={unreadChats} />}
               </Link>
             ))}
           </nav>
@@ -36,6 +41,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className="shrink-0 rounded-full border border-surface-border bg-white px-3 py-1.5 text-sm font-medium text-navy-600"
               >
                 {item.label}
+                {item.href === '/admin/chats' && unreadChats > 0 && (
+                  <span className="ml-1.5">
+                    <UnreadBadge count={unreadChats} />
+                  </span>
+                )}
               </Link>
             ))}
           </nav>
@@ -43,5 +53,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </div>
     </div>
+  );
+}
+
+function UnreadBadge({ count }: { count: number }) {
+  return (
+    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1 text-[10px] font-bold text-white">
+      {count}
+    </span>
   );
 }

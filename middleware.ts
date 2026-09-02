@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const COOKIE_NAME = 'bsb_session';
+
+// Middleware работает в Edge-рантайме и не может импортировать lib/session.ts
+// (там используется Node-модуль crypto) — поэтому SECRET и проверка подписи
+// продублированы здесь. Важно: этот же fallback-секрет уже убран из
+// lib/session.ts, но именно middleware реально решает, кого пускать на
+// /admin, /plant, /client — так что проверка нужна и тут, иначе доступ к
+// личным кабинетам остаётся подделываемым даже после фикса в session.ts.
 const SECRET =
-  process.env.SESSION_SECRET || 'dev-only-insecure-secret-change-me';
+  process.env.SESSION_SECRET ||
+  (() => {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'SESSION_SECRET не задан в окружении продакшена — без него /admin, /plant, /client небезопасны.',
+      );
+    }
+    return 'dev-only-insecure-secret-change-me';
+  })();
 
 const ROLE_PREFIXES: { prefix: string; role: string }[] = [
   { prefix: '/admin', role: 'ADMIN' },

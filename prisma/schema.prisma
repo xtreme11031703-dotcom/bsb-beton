@@ -66,6 +66,16 @@ enum OrderPlantStatus {
   EXPIRED
 }
 
+enum ChatThreadStatus {
+  OPEN
+  CLOSED
+}
+
+enum ChatSender {
+  VISITOR
+  ADMIN
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -85,6 +95,7 @@ model User {
 
   ordersAsClient Order[]              @relation("ClientOrders")
   statusChanges  OrderStatusHistory[]
+  chatThreads    ChatThread[]
 }
 
 model Plant {
@@ -186,4 +197,49 @@ model OrderStatusHistory {
   changedByUserId String?
   changedByUser User?       @relation(fields: [changedByUserId], references: [id])
   createdAt     DateTime    @default(now())
+}
+
+// Живой чат-виджет на сайте — доступен всем посетителям (не только
+// залогиненным клиентам), поэтому личность привязана к анонимному
+// visitorKey из cookie, а не только к User. Если писал залогиненный
+// клиент — дополнительно связываем с его аккаунтом (clientId), это чисто
+// для удобства админа при просмотре списка диалогов.
+model ChatThread {
+  id        String @id @default(cuid())
+  // Короткий код треда для ответа из Telegram: "/reply K7QX2M текст".
+  shortCode String @unique
+  // Анонимный идентификатор посетителя из cookie — так продолжаем диалог
+  // при возврате на сайт без входа в аккаунт.
+  visitorKey String @unique
+
+  visitorName String?
+
+  clientId String?
+  client   User?   @relation(fields: [clientId], references: [id])
+
+  status ChatThreadStatus @default(OPEN)
+
+  // Отдельные флаги непрочитанного для каждой стороны — админ должен
+  // увидеть новый вопрос посетителя, а посетитель — новый ответ админа.
+  adminUnread   Boolean @default(true)
+  visitorUnread Boolean @default(false)
+
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  messages ChatMessage[]
+
+  @@index([status, lastMessageAt])
+}
+
+model ChatMessage {
+  id       String     @id @default(cuid())
+  threadId String
+  thread   ChatThread @relation(fields: [threadId], references: [id])
+  sender   ChatSender
+  text     String
+
+  createdAt DateTime @default(now())
+
+  @@index([threadId, createdAt])
 }
