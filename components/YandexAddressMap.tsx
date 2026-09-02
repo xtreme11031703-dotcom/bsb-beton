@@ -15,6 +15,12 @@ latitude: number;
 longitude: number;
 onAddressChange: (address: string) => void;
 onChange: (latitude: number, longitude: number) => void;
+// Вызывается ТОЛЬКО когда текст адреса меняет сам человек (набирает в
+// поле) — в отличие от onAddressChange, который срабатывает и при
+// программном заполнении (после поиска/обратного геокодирования). Нужен
+// родителю, чтобы понимать "координаты ещё не подтверждены под новый
+// текст", не путая это с моментом, когда мы сами только что их подтвердили.
+onManualEdit?: () => void;
 plants?: PlantOnMap[];
 };
 
@@ -24,6 +30,7 @@ latitude,
 longitude,
 onAddressChange,
 onChange,
+onManualEdit,
 plants = [],
 }: YandexAddressMapProps) {
 const mapRef = useRef<HTMLDivElement>(null);
@@ -271,6 +278,11 @@ deliveryMarkerRef.current.update({
 * Яндекс может вернуть 403.
   */
   async function searchAddress() {
+  // Клик по кнопке «Найти» сначала уводит фокус с поля (срабатывает onBlur,
+  // который тоже вызывает searchAddress), а затем срабатывает сам onClick —
+  // без этой защиты уходят два параллельных запроса на один и тот же адрес.
+  if (searching) return;
+
   const query = address.trim();
 
 if (query.length < 3) {
@@ -390,6 +402,7 @@ type="text"
 value={address}
 onChange={(event) => {
 onAddressChange(event.target.value);
+onManualEdit?.();
 setSearchError(null);
 }}
 onKeyDown={handleKeyDown}

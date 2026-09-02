@@ -78,6 +78,10 @@ type FormState = {
   addressText: string;
   latitude: number;
   longitude: number;
+  // true, если latitude/longitude реально соответствуют addressText (успешный
+  // геокодинг/перетаскивание точки), а не остались от предыдущего адреса или
+  // от дефолтного центра Москвы — см. comment у проверки в next().
+  addressResolved: boolean;
   dateOption: 'today' | 'tomorrow' | 'custom';
   customDate: string;
   timeSlot: string;
@@ -151,6 +155,7 @@ export function OrderWizard({
     addressText: '',
     latitude: MOSCOW_CENTER.lat,
     longitude: MOSCOW_CENTER.lng,
+    addressResolved: false,
 
     dateOption: 'today',
     customDate: todayISO(),
@@ -253,6 +258,17 @@ export function OrderWizard({
       form.addressText.trim().length < 3
     ) {
       return setError('Укажите адрес доставки');
+    }
+
+    // Текст адреса есть, но координаты ему могут не соответствовать —
+    // например, поиск не нашёл введённый текст (опечатка) или ещё не
+    // завершился. Без этой проверки заказ мог уйти с адресом в тексте, но
+    // с координатами по умолчанию (центр Москвы) или от предыдущего адреса —
+    // это и была причина жалобы "адрес не синхронизируется".
+    if (step === 'address' && !form.addressResolved) {
+      return setError(
+        'Нажмите «Найти» рядом с адресом или отметьте точку на карте, чтобы подтвердить местоположение',
+      );
     }
 
     if (
@@ -869,24 +885,21 @@ export function OrderWizard({
             latitude={form.latitude}
             longitude={form.longitude}
             onAddressChange={(address) =>
-              update(
-                'addressText',
-                address
-              )
+              update('addressText', address)
+            }
+            onManualEdit={() =>
+              update('addressResolved', false)
             }
             onChange={(
               latitude,
               longitude
             ) => {
-              update(
-                'latitude',
-                latitude
-              );
-
-              update(
-                'longitude',
-                longitude
-              );
+              setForm((current) => ({
+                ...current,
+                latitude,
+                longitude,
+                addressResolved: true,
+              }));
             }}
           />
         </div>
