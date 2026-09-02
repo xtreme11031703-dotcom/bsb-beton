@@ -11,7 +11,9 @@ import {
 } from '@/app/actions/chat';
 
 // Живой чат-виджет — плавающая кнопка на всех страницах сайта (кроме
-// админки и Mini App, там ему не место). "Живой" в рамках MVP означает
+// админки, кабинета завода и Mini App, там ему не место — сотрудник завода,
+// зашедший на публичный сайт под своей учёткой, не должен случайно
+// становиться "личностью" анонимного посетителя чата). "Живой" в рамках MVP означает
 // поллинг, как и остальной реалтайм в проекте (см. OrderStatusPoller,
 // PlantOrdersPoller) — без отдельной инфраструктуры вроде WebSocket.
 export function ChatWidget() {
@@ -60,7 +62,13 @@ export function ChatWidget() {
 
   // Хуки должны отработать безусловно, поэтому решение "не рендерить"
   // виджет на этих разделах — после всех хуков.
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/miniapp')) return null;
+  if (
+    pathname?.startsWith('/admin') ||
+    pathname?.startsWith('/plant') ||
+    pathname?.startsWith('/miniapp')
+  ) {
+    return null;
+  }
 
   function handleSend() {
     const value = text.trim();

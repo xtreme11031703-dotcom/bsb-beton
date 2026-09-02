@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getChatThread, setChatThreadStatus } from '@/app/actions/admin';
+import { chatDisplayName } from '@/lib/chat';
 import { ChatReplyForm } from './ChatReplyForm';
 import { AdminChatPoller } from './AdminChatPoller';
 
@@ -8,7 +9,7 @@ export default async function AdminChatDetailPage({ params }: { params: { id: st
   const thread = await getChatThread(params.id);
   if (!thread) notFound();
 
-  const displayName = thread.visitorName || thread.client?.name || 'Гость с сайта';
+  const displayName = chatDisplayName(thread);
 
   async function toggleStatus() {
     'use server';

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { listChatThreads } from '@/app/actions/admin';
+import { chatDisplayName } from '@/lib/chat';
 
 export default async function AdminChatsPage() {
   const threads = await listChatThreads();
@@ -14,7 +15,7 @@ export default async function AdminChatsPage() {
         <div className="space-y-2">
           {threads.map((thread) => {
             const last = thread.messages[0];
-            const displayName = thread.visitorName || thread.client?.name || 'Гость с сайта';
+            const displayName = chatDisplayName(thread);
             return (
               <Link
                 key={thread.id}

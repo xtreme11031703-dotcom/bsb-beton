@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { generateLinkCode, sendTelegramMessageToMany, siteUrl } from '@/lib/telegram';
+import { chatDisplayName } from '@/lib/chat';
 import { revalidatePath } from 'next/cache';
 
 // Живой чат-виджет на сайте — доступен и гостям, и залогиненным. Личность
@@ -69,8 +70,10 @@ export async function getOrCreateThread(): Promise<ChatThreadDTO> {
       data: {
         visitorKey,
         shortCode: await uniqueShortCode(),
+        // Привязываем к аккаунту, только если это реальный клиент — сотрудник
+        // завода или админ, зашедший на публичный сайт под своей учёткой, не
+        // должен становиться "личностью" анонимного посетителя чата.
         clientId: session?.role === 'CLIENT' ? session.userId : null,
-        visitorName: session?.name,
       },
       include: { messages: true },
     });
@@ -80,6 +83,14 @@ export async function getOrCreateThread(): Promise<ChatThreadDTO> {
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: VISITOR_MAX_AGE,
+    });
+  } else if (!thread.clientId && session?.role === 'CLIENT') {
+    // Посетитель писал анонимно, потом вошёл в аккаунт клиента — подтягиваем
+    // его данные к уже существующему диалогу вместо второго безымянного треда.
+    thread = await prisma.chatThread.update({
+      where: { id: thread.id },
+      data: { clientId: session.userId },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
   }
 
@@ -130,7 +141,10 @@ export async function sendVisitorMessage(threadId: string, text: string): Promis
   const visitorKey = cookies().get(VISITOR_COOKIE)?.value;
   if (!visitorKey) return { ok: false, error: 'Сессия чата не найдена, обновите страницу' };
 
-  const thread = await prisma.chatThread.findUnique({ where: { id: threadId } });
+  const thread = await prisma.chatThread.findUnique({
+    where: { id: threadId },
+    include: { client: { select: { name: true } } },
+  });
   if (!thread || thread.visitorKey !== visitorKey) return { ok: false, error: 'Диалог не найден' };
 
   await prisma.$transaction([
@@ -142,13 +156,13 @@ export async function sendVisitorMessage(threadId: string, text: string): Promis
   ]);
 
   revalidatePath('/admin/chats');
-  await notifyAdminsNewChatMessage(thread.shortCode, thread.visitorName, trimmed);
+  await notifyAdminsNewChatMessage(thread.shortCode, chatDisplayName(thread), trimmed);
   return { ok: true };
 }
 
 /** Алертит админов в Telegram о новом сообщении — с кодом треда, чтобы можно
  * было ответить прямо из Telegram командой /reply КОД текст. */
-async function notifyAdminsNewChatMessage(shortCode: string, visitorName: string | null, text: string) {
+async function notifyAdminsNewChatMessage(shortCode: string, who: string, text: string) {
   const admins = await prisma.user.findMany({
     where: { role: 'ADMIN', telegramChatId: { not: null } },
     select: { telegramChatId: true },
@@ -156,7 +170,6 @@ async function notifyAdminsNewChatMessage(shortCode: string, visitorName: string
   const chatIds = admins.map((a) => a.telegramChatId!).filter(Boolean);
   if (chatIds.length === 0) return;
 
-  const who = visitorName || 'Гость с сайта';
   await sendTelegramMessageToMany(
     chatIds,
     `💬 Новый вопрос в чате (${who}):\n«${text}»\n\nОтветить: /reply ${shortCode} ваш текст\nИли в админке: ${siteUrl('/admin/chats')}`,
