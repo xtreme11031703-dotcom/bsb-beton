@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { SiteHeader } from '@/components/SiteHeader';
 import { getClientOrderById } from '@/app/actions/orders';
 import { ORDER_STATUS_LABELS } from '@/lib/utils';
-import { describeCartItem, describeCartItemQuantity } from '@/lib/catalog';
+import { describeCartItem, describeCartItemQuantity, formatPrice } from '@/lib/catalog';
 import { StatusBadge } from '@/components/StatusBadge';
 import { company } from '@/lib/company';
 import { OrderStatusPoller } from './OrderStatusPoller';
@@ -45,14 +45,23 @@ export default async function ClientOrderDetailPage({ params }: { params: { id: 
               <ul className="mt-1 space-y-1">
                 {order.items.map((item) => (
                   <li key={item.id} className="flex justify-between gap-4 text-sm">
-                    <span className="text-navy-800">{describeCartItem(item)}</span>
-                    {describeCartItemQuantity(item) && (
-                      <span className="shrink-0 font-medium text-navy-800">{describeCartItemQuantity(item)}</span>
-                    )}
+                    <span className="text-navy-800">
+                      {describeCartItem(item)}
+                      {describeCartItemQuantity(item) ? `, ${describeCartItemQuantity(item)}` : ''}
+                    </span>
+                    <span className="shrink-0 font-medium text-navy-800">{formatPrice(item.lineTotal)}</span>
                   </li>
                 ))}
               </ul>
             </div>
+            <Row
+              label="Итого"
+              value={formatPrice(
+                order.items.every((i) => i.lineTotal != null)
+                  ? order.items.reduce((sum, i) => sum + (i.lineTotal ?? 0), 0)
+                  : null,
+              )}
+            />
             <Row label="Адрес" value={order.addressText} />
             <Row
               label="Дата и время"

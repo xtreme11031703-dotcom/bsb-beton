@@ -4,6 +4,7 @@ import { Logo } from './Logo';
 import { logout } from '@/app/actions/auth';
 import { company } from '@/lib/company';
 import { MobileNav } from './MobileNav';
+import { CartBadge } from './CartBadge';
 
 export async function SiteHeader() {
   const session = await getSession();
@@ -95,6 +96,8 @@ export async function SiteHeader() {
               </>
             )}
           </div>
+
+          <CartBadge />
 
           <MobileNav loggedIn={Boolean(session)} />
         </div>

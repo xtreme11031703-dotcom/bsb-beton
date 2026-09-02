@@ -5,12 +5,19 @@ import { prisma } from '@/lib/prisma';
 import { getSession, createSession } from '@/lib/session';
 import { hashPassword, verifyPassword } from '@/lib/auth';
 import { generateOrderNumber, distanceKm } from '@/lib/utils';
-import { distinctCategories, plantCoversCategories, summarizeOrderItems } from '@/lib/catalog';
+import { distinctCategories, getItemLineTotal, getItemUnitPrice, plantCoversCategories, summarizeOrderItems } from '@/lib/catalog';
 import { sendTelegramMessageToMany, siteUrl } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
 const CATEGORIES = ['BETON', 'TOSHCHIY_BETON', 'VYSOKOPROCHNYY_BETON', 'POLISTIROLBETON', 'RASTVORY', 'NASOS'] as const;
-const GRADES = ['M100', 'M150', 'M200', 'M250', 'M300', 'M350', 'M400', 'M450', 'M500'] as const;
+// Полный набор марок по всем категориям каталога сразу — см. lib/catalog.ts,
+// какие конкретно марки доступны для какого сочетания категория/наполнитель/
+// вид раствора (это уже не проверка формата, а бизнес-правило, поэтому здесь
+// достаточно проверить, что значение вообще существует как марка).
+const GRADES = [
+  'M50', 'M75', 'M100', 'M150', 'M200', 'M250', 'M300', 'M350', 'M400', 'M450', 'M500',
+  'M550', 'M600', 'M700', 'M800', 'M900', 'M1000',
+] as const;
 
 const itemSchema = z.object({
   category: z.enum(CATEGORIES),
@@ -119,6 +126,10 @@ export async function submitOrder(input: unknown): Promise<ActionResult> {
       orderNumber,
       clientId: session.userId,
       items: {
+        // Цена считается ЗДЕСЬ, на сервере, по прайсу lib/catalog.ts — а не
+        // принимается от клиента (иначе её можно было бы подделать в запросе).
+        // unitPrice/lineTotal сохраняются как снимок на момент оформления,
+        // см. комментарий у этих полей в prisma/schema.prisma.
         create: data.items.map((item) => ({
           category: item.category,
           concreteGrade: item.concreteGrade,
@@ -134,6 +145,8 @@ export async function submitOrder(input: unknown): Promise<ActionResult> {
           pumpNote: item.pumpNote || null,
           quantity: item.quantity ?? 0,
           additionalWishes: item.additionalWishes || null,
+          unitPrice: getItemUnitPrice(item),
+          lineTotal: getItemLineTotal(item),
         })),
       },
       addressText: data.addressText,

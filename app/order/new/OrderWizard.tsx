@@ -1,29 +1,35 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { SelectableCard } from '@/components/wizard/SelectableCard';
 import { StepShell } from '@/components/wizard/StepShell';
 import YandexAddressMap from '@/components/YandexAddressMap';
 import { submitOrder } from '@/app/actions/orders';
+import { useCart } from '@/lib/cart-context';
 import {
   ALL_PRODUCT_CATEGORIES,
-  AUTO_PUMP_LENGTHS,
-  CONCRETE_GRADES_BY_CATEGORY,
+  AUTO_PUMP_SKUS,
   MORTAR_KIND_LABELS,
   PRODUCT_CATEGORY_HINTS,
   PRODUCT_CATEGORY_LABELS,
   PUMP_TYPE_LABELS,
+  STATIONARY_PUMP_SKUS,
   categoryUsesAggregate,
   categoryUsesConcreteSpecs,
-  categoryUsesGrade,
   categoryUsesMortarKind,
   categoryUsesPump,
   categoryUsesQuantity,
   describeCartItem,
   describeCartItemQuantity,
   emptyCartItem,
+  formatPrice,
+  getCartTotal,
+  getGradeOptions,
+  getItemLineTotal,
+  getItemUnitPrice,
   isCartItemValid,
+  itemRequiresGrade,
   type CartItem,
 } from '@/lib/catalog';
 import type { ConcreteAggregate, MortarKind, ProductCategory, PumpType } from '@prisma/client';
@@ -34,7 +40,7 @@ const CONCRETE_AGGREGATES: { value: ConcreteAggregate; label: string }[] = [
   { value: 'EXPANDED_CLAY', label: 'Керамзитобетон' },
 ];
 
-const MORTAR_KINDS: MortarKind[] = ['CEMENT', 'SPECIAL', 'SAND_CONCRETE'];
+const MORTAR_KINDS: MortarKind[] = ['CEMENT', 'SAND_CONCRETE', 'SPECIAL'];
 const PUMP_TYPES: PumpType[] = ['AUTO', 'STATIONARY'];
 
 const TIME_SLOTS = [
@@ -47,9 +53,9 @@ const TIME_SLOTS = [
 ];
 
 // Шаги мастера. "catalog" — выбор категории и заполнение позиции, "cart" —
-// обзор корзины (можно добавить ещё позицию или перейти дальше). Раньше был
-// один товар на заказ — теперь можно набрать сколько угодно позиций разных
-// категорий, полностью повторяя структуру каталога bsb-beton.ru/catalog.
+// обзор корзины (можно добавить ещё позицию или перейти дальше). Корзина
+// общая с публичными страницами каталога (app/catalog, lib/cart-context.tsx) —
+// можно набрать позиции там, а сюда прийти сразу к их оформлению, или наоборот.
 type Step = 'catalog' | 'cart' | 'address' | 'datetime' | 'contact' | 'summary';
 
 const STEPS: Step[] = ['catalog', 'cart', 'address', 'datetime', 'contact', 'summary'];
@@ -108,8 +114,11 @@ export function OrderWizard({
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<{ orderNumber: string } | null>(null);
 
-  // Корзина заказа — ноль или больше позиций разных категорий.
-  const [cart, setCart] = useState<CartItem[]>([]);
+  // Корзина общая со страницами каталога (app/catalog) — хранится в
+  // lib/cart-context.tsx (localStorage), а не только в состоянии этого
+  // компонента, поэтому позиции, добавленные на витрине каталога, уже видны
+  // здесь.
+  const { items: cart, addItem, removeItem, clearCart } = useCart();
   // Позиция, которая сейчас заполняется на шаге "catalog" (ещё не в корзине).
   const [draft, setDraft] = useState<CartItem | null>(null);
 
@@ -134,7 +143,22 @@ export function OrderWizard({
   const [stepIdx, setStepIdx] = useState(0);
   const step = STEPS[stepIdx];
 
+  // Если в корзину уже что-то добавлено (например, на страницах каталога до
+  // перехода сюда), сразу открываем обзор корзины, а не пустой выбор
+  // категории. Корзина подгружается из localStorage асинхронно (после
+  // монтирования), поэтому это отдельный эффект, а не начальное значение
+  // useState — и срабатывает только один раз, чтобы не перекидывать
+  // пользователя обратно в корзину, если он сам ушёл добавлять ещё позицию.
+  const [autoJumped, setAutoJumped] = useState(false);
+  useEffect(() => {
+    if (!autoJumped && cart.length > 0 && stepIdx === 0) {
+      setStepIdx(STEPS.indexOf('cart'));
+      setAutoJumped(true);
+    }
+  }, [cart.length, autoJumped, stepIdx]);
+
   const availableTimeSlots = useMemo(() => availableTimeSlotsFor(details.dateOption), [details.dateOption]);
+  const cartTotal = useMemo(() => getCartTotal(cart), [cart]);
 
   function updateDetails<K extends keyof OrderDetailsState>(key: K, value: OrderDetailsState[K]) {
     setDetails((current) => ({ ...current, [key]: value }));
@@ -155,14 +179,10 @@ export function OrderWizard({
       setError('Заполните обязательные поля позиции');
       return;
     }
-    setCart((current) => [...current, draft]);
+    addItem(draft);
     setDraft(null);
     setError(null);
     setStepIdx(STEPS.indexOf('cart'));
-  }
-
-  function removeFromCart(key: string) {
-    setCart((current) => current.filter((item) => item.key !== key));
   }
 
   /** Смена даты доставки — заодно сбрасываем ранее выбранный слот времени. */
@@ -253,7 +273,7 @@ export function OrderWizard({
       const result = await submitOrder({
         items: cart.map((item) => ({
           category: item.category,
-          concreteGrade: categoryUsesGrade(item.category) ? item.concreteGrade ?? undefined : undefined,
+          concreteGrade: itemRequiresGrade(item) ? item.concreteGrade ?? undefined : undefined,
           aggregate: categoryUsesAggregate(item.category) ? item.aggregate ?? undefined : undefined,
           concreteClass: categoryUsesConcreteSpecs(item.category) ? item.concreteClass || undefined : undefined,
           mobility: categoryUsesConcreteSpecs(item.category) ? item.mobility || undefined : undefined,
@@ -289,6 +309,7 @@ export function OrderWizard({
         return;
       }
 
+      clearCart();
       setSubmitted({ orderNumber: result.orderNumber });
       router.refresh();
     });
@@ -324,6 +345,10 @@ export function OrderWizard({
       )}
     </div>
   );
+
+  const draftGradeOptions = draft ? getGradeOptions(draft) : [];
+  const draftUnitPrice = draft ? getItemUnitPrice(draft) : null;
+  const draftLineTotal = draft ? getItemLineTotal(draft) : null;
 
   return (
     <StepShell
@@ -363,22 +388,6 @@ export function OrderWizard({
         <div className="space-y-5">
           <p className="text-sm font-medium text-navy-500">{PRODUCT_CATEGORY_LABELS[draft.category]}</p>
 
-          {categoryUsesGrade(draft.category) && (
-            <div>
-              <p className="field-label">Марка</p>
-              <div className="grid grid-cols-3 gap-3">
-                {(CONCRETE_GRADES_BY_CATEGORY[draft.category] ?? []).map((grade) => (
-                  <SelectableCard
-                    key={grade}
-                    label={grade}
-                    selected={draft.concreteGrade === grade}
-                    onClick={() => updateDraft('concreteGrade', grade)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
           {categoryUsesAggregate(draft.category) && (
             <div>
               <p className="field-label">Наполнитель</p>
@@ -388,7 +397,13 @@ export function OrderWizard({
                     key={value}
                     label={label}
                     selected={draft.aggregate === value}
-                    onClick={() => updateDraft('aggregate', value)}
+                    onClick={() => {
+                      updateDraft('aggregate', value);
+                      // Марки разные для разных наполнителей (см.
+                      // lib/catalog.ts -> BETON_SKUS) — ранее выбранная
+                      // марка может не существовать для нового наполнителя.
+                      updateDraft('concreteGrade', null);
+                    }}
                   />
                 ))}
               </div>
@@ -402,9 +417,30 @@ export function OrderWizard({
                 {MORTAR_KINDS.map((kind) => (
                   <SelectableCard
                     key={kind}
-                    label={MORTAR_KIND_LABELS[kind]}
+                    label={kind === 'SPECIAL' ? 'Специальные растворы' : MORTAR_KIND_LABELS[kind]}
                     selected={draft.mortarKind === kind}
-                    onClick={() => updateDraft('mortarKind', kind)}
+                    onClick={() => {
+                      updateDraft('mortarKind', kind);
+                      // Марки у "Цементных" и "Пескобетона" разные наборы, а
+                      // у "Специальных" марки нет вообще — сбрасываем.
+                      updateDraft('concreteGrade', null);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {itemRequiresGrade(draft) && draftGradeOptions.length > 0 && (
+            <div>
+              <p className="field-label">Марка</p>
+              <div className="grid grid-cols-3 gap-3">
+                {draftGradeOptions.map((grade) => (
+                  <SelectableCard
+                    key={grade}
+                    label={grade}
+                    selected={draft.concreteGrade === grade}
+                    onClick={() => updateDraft('concreteGrade', grade)}
                   />
                 ))}
               </div>
@@ -503,22 +539,26 @@ export function OrderWizard({
                       key={type}
                       label={PUMP_TYPE_LABELS[type]}
                       selected={draft.pumpType === type}
-                      onClick={() => updateDraft('pumpType', type)}
+                      onClick={() => {
+                        updateDraft('pumpType', type);
+                        updateDraft('pumpLength', '');
+                      }}
                     />
                   ))}
                 </div>
               </div>
 
-              {draft.pumpType === 'AUTO' && (
+              {draft.pumpType && (
                 <div>
-                  <p className="field-label">Вылет стрелы</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {AUTO_PUMP_LENGTHS.map((length) => (
+                  <p className="field-label">{draft.pumpType === 'AUTO' ? 'Вылет стрелы' : 'Вариант'}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(draft.pumpType === 'AUTO' ? AUTO_PUMP_SKUS : STATIONARY_PUMP_SKUS).map((sku) => (
                       <SelectableCard
-                        key={length}
-                        label={length}
-                        selected={draft.pumpLength === length}
-                        onClick={() => updateDraft('pumpLength', length)}
+                        key={sku.length}
+                        label={sku.length}
+                        sublabel={formatPrice(sku.price)}
+                        selected={draft.pumpLength === sku.length}
+                        onClick={() => updateDraft('pumpLength', sku.length)}
                       />
                     ))}
                   </div>
@@ -546,6 +586,15 @@ export function OrderWizard({
               onChange={(event) => updateDraft('additionalWishes', event.target.value)}
             />
           </div>
+
+          {(draftUnitPrice !== null || draftLineTotal !== null) && (
+            <div className="rounded-xl bg-surface-muted p-4 text-sm">
+              {categoryUsesQuantity(draft.category) && draftUnitPrice !== null && (
+                <p className="text-navy-500">Цена: {formatPrice(draftUnitPrice)} / м³</p>
+              )}
+              <p className="mt-0.5 font-semibold text-navy-800">Итого по позиции: {formatPrice(draftLineTotal)}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -555,24 +604,32 @@ export function OrderWizard({
             <p className="card text-sm text-navy-400">Корзина пуста.</p>
           ) : (
             <div className="space-y-3">
-              {cart.map((item) => (
-                <div key={item.key} className="card flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-navy-800">{describeCartItem(item)}</p>
-                    {describeCartItemQuantity(item) && (
-                      <p className="mt-0.5 text-sm text-navy-500">{describeCartItemQuantity(item)}</p>
-                    )}
+              {cart.map((item) => {
+                const lineTotal = getItemLineTotal(item);
+                return (
+                  <div key={item.key} className="card flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-navy-800">{describeCartItem(item)}</p>
+                      {describeCartItemQuantity(item) && (
+                        <p className="mt-0.5 text-sm text-navy-500">{describeCartItemQuantity(item)}</p>
+                      )}
+                      <p className="mt-0.5 text-sm font-semibold text-navy-700">{formatPrice(lineTotal)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.key)}
+                      className="shrink-0 text-sm text-navy-400 hover:text-red-600"
+                      aria-label="Удалить позицию"
+                    >
+                      Удалить
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeFromCart(item.key)}
-                    className="shrink-0 text-sm text-navy-400 hover:text-red-600"
-                    aria-label="Удалить позицию"
-                  >
-                    Удалить
-                  </button>
-                </div>
-              ))}
+                );
+              })}
+              <div className="card flex items-center justify-between bg-surface-muted">
+                <span className="font-semibold text-navy-800">Итого</span>
+                <span className="text-lg font-bold text-navy-800">{formatPrice(cartTotal)}</span>
+              </div>
             </div>
           )}
           <button
@@ -729,15 +786,15 @@ export function OrderWizard({
               {cart.map((item) => (
                 <div key={item.key} className="flex justify-between gap-4">
                   <span className="text-sm text-navy-500">{describeCartItem(item)}</span>
-                  {describeCartItemQuantity(item) && (
-                    <span className="shrink-0 text-right text-sm font-medium text-navy-800">
-                      {describeCartItemQuantity(item)}
-                    </span>
-                  )}
+                  <span className="shrink-0 text-right text-sm font-medium text-navy-800">
+                    {describeCartItemQuantity(item) ? `${describeCartItemQuantity(item)} · ` : ''}
+                    {formatPrice(getItemLineTotal(item))}
+                  </span>
                 </div>
               ))}
             </div>
 
+            <SummaryRow label="Итого" value={formatPrice(cartTotal)} />
             <SummaryRow label="Адрес" value={details.addressText} />
             <SummaryRow
               label="Дата"

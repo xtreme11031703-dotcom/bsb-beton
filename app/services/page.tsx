@@ -45,34 +45,38 @@ export default function ServicesPage() {
               const Icon = serviceIcons[cat.slug] ?? LayersIcon;
               return (
               <Reveal key={cat.slug} delayMs={i * 80}>
-                <div className="card flex h-full flex-col transition-transform hover:-translate-y-1 hover:shadow-lg">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="mt-3 text-lg font-semibold text-navy-700">{cat.title}</h3>
-                  <p className="mt-2 flex-1 text-sm text-navy-500">{cat.description}</p>
-
-                  {'grades' in cat && cat.grades && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {cat.grades.map((g) => (
-                        <span
-                          key={g}
-                          className="rounded-lg bg-surface-muted px-2 py-1 text-xs font-medium text-navy-600"
-                        >
-                          {g}
-                        </span>
-                      ))}
+                <Link href={`/catalog/${cat.slug}`} className="block h-full">
+                  <div className="card flex h-full flex-col transition-transform hover:-translate-y-1 hover:shadow-lg">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
+                      <Icon className="h-6 w-6" />
                     </div>
-                  )}
+                    <h3 className="mt-3 text-lg font-semibold text-navy-700">{cat.title}</h3>
+                    <p className="mt-2 flex-1 text-sm text-navy-500">{cat.description}</p>
 
-                  {'applications' in cat && cat.applications && (
-                    <ul className="mt-3 space-y-1 text-xs text-navy-400">
-                      {cat.applications.map((a) => (
-                        <li key={a}>— {a}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                    {'grades' in cat && cat.grades && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {cat.grades.map((g) => (
+                          <span
+                            key={g}
+                            className="rounded-lg bg-surface-muted px-2 py-1 text-xs font-medium text-navy-600"
+                          >
+                            {g}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {'applications' in cat && cat.applications && (
+                      <ul className="mt-3 space-y-1 text-xs text-navy-400">
+                        {cat.applications.map((a) => (
+                          <li key={a}>— {a}</li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <span className="mt-3 inline-block text-sm font-medium text-accent-600">Смотреть цены →</span>
+                  </div>
+                </Link>
               </Reveal>
               );
             })}

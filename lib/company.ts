@@ -98,6 +98,7 @@ export const company = {
         { href: '/faq', label: 'Вопрос-ответ' },
       ],
     },
+    { href: '/catalog', label: 'Каталог' },
     { href: '/services', label: 'Услуги и цены' },
     { href: '/blog', label: 'Блог' },
     { href: '/contacts', label: 'Контакты' },
