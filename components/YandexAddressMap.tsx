@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { searchAddressAction, reverseGeocodeAction } from '@/app/actions/geocoding';
 
 type PlantOnMap = {
 id: string;
@@ -54,15 +55,16 @@ onAddressChangeRef.current = onAddressChange;
 // Обратное геокодирование: точку передвинули на карте (клик или
 // перетаскивание) — подтягиваем текстовый адрес под новые координаты,
 // чтобы поле адреса не расходилось с фактическим местом на карте.
+//
+// Раньше здесь был клиентский ymaps3.search — он не полноценный геокодер
+// (см. комментарий в lib/yandex-geocoder.ts), из-за чего адрес мог не
+// подтягиваться вовсе или подтягиваться неверно. Теперь запрос идёт через
+// серверный HTTP Geocoder API Яндекса.
 useEffect(() => {
 reverseGeocodeRef.current = async (lat: number, lng: number) => {
   try {
-    const ymaps3 = (window as any).ymaps3;
-    if (!ymaps3) return;
-    await ymaps3.ready;
-    const result = await ymaps3.search({ text: `${lat}, ${lng}`, limit: 1 });
-    const found = result?.[0]?.properties?.name || result?.[0]?.properties?.description;
-    if (found) onAddressChangeRef.current(found);
+    const result = await reverseGeocodeAction(lat, lng);
+    if (result.ok) onAddressChangeRef.current(result.address);
   } catch (error) {
     console.error('Ошибка обратного геокодирования:', error);
   }
@@ -272,10 +274,9 @@ deliveryMarkerRef.current.update({
 
 * Поиск адреса.
 *
-* ВАЖНО:
-* используем ymaps3.search.
-* Если ключ не имеет доступа к геокодированию,
-* Яндекс может вернуть 403.
+* Идёт через серверный HTTP Geocoder API Яндекса (app/actions/geocoding.ts),
+* а не через клиентский ymaps3.search — см. подробный комментарий в
+* lib/yandex-geocoder.ts о том, почему прежний вариант был ненадёжным.
   */
   async function searchAddress() {
   // Клик по кнопке «Найти» сначала уводит фокус с поля (срабатывает onBlur,
@@ -295,54 +296,20 @@ setSearching(true);
 setSearchError(null);
 
 try {
-  const ymaps3 = (window as any).ymaps3;
+  const result = await searchAddressAction(query);
 
-  if (!ymaps3) {
-    throw new Error(
-      'Яндекс Карты ещё не загрузились'
-    );
-  }
-
-  await ymaps3.ready;
-
-  const result = await ymaps3.search({
-    text: query,
-    limit: 1,
-  });
-
-  if (!result || result.length === 0) {
-    setSearchError('Адрес не найден');
+  if (!result.ok) {
+    setSearchError(result.error);
     return;
   }
 
-  const first = result[0];
-
-  const coordinates =
-    first?.geometry?.coordinates;
-
-  if (
-    !Array.isArray(coordinates) ||
-    coordinates.length < 2
-  ) {
-    setSearchError(
-      'Не удалось получить координаты адреса'
-    );
-    return;
-  }
-
-  const [
-    newLongitude,
-    newLatitude,
-  ] = coordinates;
+  const { latitude: newLatitude, longitude: newLongitude, address: foundAddress } = result;
 
   /*
    * Обновляем адрес и координаты
    * в OrderWizard.
    */
-  onChangeRef.current(
-    Number(newLatitude),
-    Number(newLongitude)
-  );
+  onChangeRef.current(newLatitude, newLongitude);
 
   if (deliveryMarkerRef.current) {
     deliveryMarkerRef.current.update({
@@ -363,10 +330,6 @@ try {
       duration: 500,
     });
   }
-
-  const foundAddress =
-    first?.properties?.name ||
-    first?.properties?.description;
 
   if (foundAddress) {
     onAddressChange(foundAddress);

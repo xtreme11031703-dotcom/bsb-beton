@@ -4,13 +4,26 @@ import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import YandexMap from '@/components/YandexMap';
 import { company } from '@/lib/company';
+import { getPublicPlantLocations } from '@/app/actions/plants';
+import { geocodeAddress } from '@/lib/yandex-geocoder';
 
 export const metadata = {
   title: `Доставка бетона по Московской области — ${company.fullName}`,
   description: 'Доставляем товарный бетон и растворы в города Московской области с ближайшего завода.',
 };
 
-export default function DostavkaPoMoPage() {
+export default async function DostavkaPoMoPage() {
+  const plants = await getPublicPlantLocations();
+
+  const headOfficeBranch = company.branches.find((b) => b.name === 'Главный офис');
+  const headOfficeGeocoded =
+    headOfficeBranch && (headOfficeBranch.address as string) !== 'уточняется'
+      ? await geocodeAddress(headOfficeBranch.address, 60 * 60 * 24).catch(() => null)
+      : null;
+  const headOffice = headOfficeGeocoded
+    ? { name: headOfficeBranch!.name, latitude: headOfficeGeocoded.latitude, longitude: headOfficeGeocoded.longitude }
+    : null;
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -103,7 +116,7 @@ export default function DostavkaPoMoPage() {
           </Reveal>
           <Reveal delayMs={100}>
             <div className="overflow-hidden rounded-3xl border border-surface-border shadow-soft">
-              <YandexMap />
+              <YandexMap plants={plants} headOffice={headOffice} />
             </div>
           </Reveal>
         </section>

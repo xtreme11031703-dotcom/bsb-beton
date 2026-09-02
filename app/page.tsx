@@ -5,6 +5,8 @@ import { Reveal } from '@/components/Reveal';
 import { CountUp } from '@/components/CountUp';
 import YandexMap from '@/components/YandexMap';
 import { company } from '@/lib/company';
+import { getPublicPlantLocations } from '@/app/actions/plants';
+import { geocodeAddress } from '@/lib/yandex-geocoder';
 
 const benefits = [
   {
@@ -26,7 +28,21 @@ const benefits = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const plants = await getPublicPlantLocations();
+
+  // Главный офис не хранится в таблице заводов (это не производственная
+  // площадка) — геокодируем его адрес из company.branches один раз на
+  // сервере, чтобы показать точку на карте вместе с заводами.
+  const headOfficeBranch = company.branches.find((b) => b.name === 'Главный офис');
+  const headOfficeGeocoded =
+    headOfficeBranch && (headOfficeBranch.address as string) !== 'уточняется'
+      ? await geocodeAddress(headOfficeBranch.address, 60 * 60 * 24).catch(() => null)
+      : null;
+  const headOffice = headOfficeGeocoded
+    ? { name: headOfficeBranch!.name, latitude: headOfficeGeocoded.latitude, longitude: headOfficeGeocoded.longitude }
+    : null;
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -135,7 +151,7 @@ export default function HomePage() {
 
           <Reveal delayMs={100}>
             <div className="overflow-hidden rounded-3xl border border-surface-border shadow-soft">
-              <YandexMap />
+              <YandexMap plants={plants} headOffice={headOffice} />
             </div>
           </Reveal>
         </section>

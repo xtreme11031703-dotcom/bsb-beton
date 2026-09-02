@@ -3,13 +3,26 @@ import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import YandexMap from '@/components/YandexMap';
 import { company } from '@/lib/company';
+import { getPublicPlantLocations } from '@/app/actions/plants';
+import { geocodeAddress } from '@/lib/yandex-geocoder';
 
 export const metadata = {
   title: `Контакты — ${company.fullName}`,
   description: 'Телефон, email и адреса заводов БСБ в Москве и Московской области.',
 };
 
-export default function ContactsPage() {
+export default async function ContactsPage() {
+  const plants = await getPublicPlantLocations();
+
+  const headOfficeBranch = company.branches.find((b) => b.name === 'Главный офис');
+  const headOfficeGeocoded =
+    headOfficeBranch && (headOfficeBranch.address as string) !== 'уточняется'
+      ? await geocodeAddress(headOfficeBranch.address, 60 * 60 * 24).catch(() => null)
+      : null;
+  const headOffice = headOfficeGeocoded
+    ? { name: headOfficeBranch!.name, latitude: headOfficeGeocoded.latitude, longitude: headOfficeGeocoded.longitude }
+    : null;
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -75,7 +88,7 @@ export default function ContactsPage() {
             <h2 className="mb-5 text-2xl font-bold text-navy-700">Зона доставки</h2>
           </Reveal>
           <div className="overflow-hidden rounded-2xl border border-surface-border shadow-sm">
-            <YandexMap />
+            <YandexMap plants={plants} headOffice={headOffice} />
           </div>
         </section>
       </main>

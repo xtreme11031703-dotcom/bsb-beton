@@ -5,6 +5,21 @@ import { getSession } from '@/lib/session';
 import { sendTelegramMessage, siteUrl } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Публичный список активных заводов для карты на витрине сайта (главная,
+ * "Доставка по МО") — только название и координаты, без телефона, адреса и
+ * радиуса доставки. Доступен без входа: показ точки завода на карте — это
+ * маркетинг ("где мы есть"), а не раскрытие данных конкретного заказа (там
+ * действует другое правило приватности — см. notifyClientPlantAssigned).
+ */
+export async function getPublicPlantLocations() {
+  const plants = await prisma.plant.findMany({
+    where: { status: 'ACTIVE' },
+    select: { id: true, name: true, latitude: true, longitude: true },
+  });
+  return plants.map((p) => ({ ...p, status: 'ACTIVE' as const }));
+}
+
 /** Заказы, доступные для завода текущего пользователя (роль PLANT), сгруппированные по статусу. */
 export async function getPlantOrders() {
   const session = await getSession();

@@ -10,11 +10,18 @@ export type YandexMapPlant = {
   status: 'ACTIVE' | 'INACTIVE';
 };
 
-type YandexMapProps = {
-  plants?: YandexMapPlant[];
+export type YandexMapHeadOffice = {
+  name: string;
+  latitude: number;
+  longitude: number;
 };
 
-export default function YandexMap({ plants = [] }: YandexMapProps) {
+type YandexMapProps = {
+  plants?: YandexMapPlant[];
+  headOffice?: YandexMapHeadOffice | null;
+};
+
+export default function YandexMap({ plants = [], headOffice = null }: YandexMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
@@ -58,22 +65,34 @@ export default function YandexMap({ plants = [] }: YandexMapProps) {
             Number.isFinite(plant.longitude)
         );
 
-        // Если есть заводы — центрируем карту по ним.
-        // Если заводов нет — Москва.
+        const hasHeadOffice =
+          !!headOffice &&
+          Number.isFinite(headOffice.latitude) &&
+          Number.isFinite(headOffice.longitude);
+
+        // Все точки, которые должны попасть в поле зрения карты — заводы и,
+        // если есть, головной офис (иначе при большом разбросе заводов офис
+        // мог оказаться за пределами видимой области).
+        const boundsPoints = [
+          ...activePlants.map((p) => ({ longitude: p.longitude, latitude: p.latitude })),
+          ...(hasHeadOffice ? [{ longitude: headOffice!.longitude, latitude: headOffice!.latitude }] : []),
+        ];
+
+        // Если есть точки — центрируем карту по ним. Если нет — Москва.
         let center: [number, number] = [37.6176, 55.7558];
         let zoom = 9;
 
-        if (activePlants.length === 1) {
+        if (boundsPoints.length === 1) {
           center = [
-            activePlants[0].longitude,
-            activePlants[0].latitude,
+            boundsPoints[0].longitude,
+            boundsPoints[0].latitude,
           ];
           zoom = 11;
         }
 
-        if (activePlants.length > 1) {
-          const lngs = activePlants.map((p) => p.longitude);
-          const lats = activePlants.map((p) => p.latitude);
+        if (boundsPoints.length > 1) {
+          const lngs = boundsPoints.map((p) => p.longitude);
+          const lats = boundsPoints.map((p) => p.latitude);
 
           const minLng = Math.min(...lngs);
           const maxLng = Math.max(...lngs);
@@ -181,10 +200,53 @@ export default function YandexMap({ plants = [] }: YandexMapProps) {
           map.addChild(marker);
         });
 
+        /*
+         * Головной офис.
+         *
+         * Визуально отличается от заводов (крупнее, акцентный цвет) и
+         * подписан всегда, а не только при наведении — это единственная
+         * такая точка на карте.
+         */
+        if (hasHeadOffice) {
+          const officeElement = document.createElement('div');
+          officeElement.style.position = 'relative';
+          officeElement.style.width = '22px';
+          officeElement.style.height = '22px';
+          officeElement.style.borderRadius = '50%';
+          officeElement.style.backgroundColor = '#f97316';
+          officeElement.style.border = '3px solid white';
+          officeElement.style.boxShadow = '0 2px 10px rgba(0,0,0,0.4)';
+          officeElement.style.transform = 'translate(-50%, -50%)';
+
+          const officeLabel = document.createElement('div');
+          officeLabel.textContent = headOffice!.name;
+          officeLabel.style.position = 'absolute';
+          officeLabel.style.left = '50%';
+          officeLabel.style.bottom = '28px';
+          officeLabel.style.transform = 'translateX(-50%)';
+          officeLabel.style.background = '#f97316';
+          officeLabel.style.color = '#fff';
+          officeLabel.style.padding = '5px 9px';
+          officeLabel.style.borderRadius = '7px';
+          officeLabel.style.fontSize = '12px';
+          officeLabel.style.fontWeight = '600';
+          officeLabel.style.whiteSpace = 'nowrap';
+          officeLabel.style.pointerEvents = 'none';
+
+          officeElement.appendChild(officeLabel);
+
+          const officeMarker = new YMapMarker(
+            { coordinates: [headOffice!.longitude, headOffice!.latitude] },
+            officeElement,
+          );
+
+          map.addChild(officeMarker);
+        }
+
         mapInstanceRef.current = map;
 
         console.log(
-          `Яндекс.Карта загружена. Заводов: ${activePlants.length}`
+          `Яндекс.Карта загружена. Заводов: ${activePlants.length}${hasHeadOffice ? ' + головной офис' : ''}`
         );
       } catch (error) {
         console.error(
@@ -204,7 +266,7 @@ export default function YandexMap({ plants = [] }: YandexMapProps) {
         mapInstanceRef.current = null;
       }
     };
-  }, [plants]);
+  }, [plants, headOffice]);
 
   return (
     <div
