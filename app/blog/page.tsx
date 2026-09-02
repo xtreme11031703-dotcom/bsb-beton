@@ -1,36 +1,14 @@
+import Link from 'next/link';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import { company } from '@/lib/company';
+import { blogPosts } from '@/lib/blog-posts';
 
 export const metadata = {
   title: `Блог — ${company.fullName}`,
   description: 'Статьи о марках бетона, доставке и работе с бетононасосом.',
 };
-
-// Черновой набор статей — контент реального блога с bsb-beton.ru не удалось
-// автоматически выгрузить (страница блога отдаёт редирект без содержимого).
-// Замени эти карточки на реальные статьи, когда пришлёшь тексты.
-const posts = [
-  {
-    title: 'Как выбрать марку бетона под задачу',
-    excerpt:
-      'М100–М500: чем отличаются марки бетона по прочности и для каких конструкций подходит каждая — фундамент, стяжка, плита перекрытия или дорожное покрытие.',
-    date: '2026-08-01',
-  },
-  {
-    title: 'Когда нужен автобетононасос, а когда достаточно миксера',
-    excerpt:
-      'Разбираем, в каких случаях подача бетона насосом экономит время и деньги на объекте, а в каких хватит обычной доставки миксером.',
-    date: '2026-07-18',
-  },
-  {
-    title: 'Уход за бетоном после заливки: первые 28 дней',
-    excerpt:
-      'Что влияет на набор прочности бетона после заливки: температура, влажность, укрытие поверхности и график контроля.',
-    date: '2026-07-02',
-  },
-];
 
 export default function BlogPage() {
   return (
@@ -53,19 +31,24 @@ export default function BlogPage() {
 
         <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {posts.map((post, i) => (
-              <Reveal key={post.title} delayMs={i * 100}>
-                <article className="card h-full transition-transform hover:-translate-y-1 hover:shadow-lg">
-                  <time className="text-xs text-navy-400">
-                    {new Date(post.date).toLocaleDateString('ru-RU', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </time>
-                  <h3 className="mt-2 font-semibold text-navy-700">{post.title}</h3>
-                  <p className="mt-1.5 text-sm text-navy-500">{post.excerpt}</p>
-                </article>
+            {blogPosts.map((post, i) => (
+              <Reveal key={post.slug} delayMs={(i % 6) * 80}>
+                <Link href={`/blog/${post.slug}`} className="block h-full">
+                  <article className="card h-full transition-transform hover:-translate-y-1 hover:shadow-lg">
+                    <time className="text-xs text-navy-400">
+                      {new Date(post.date).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </time>
+                    <h3 className="mt-2 font-semibold text-navy-700">{post.title}</h3>
+                    <p className="mt-1.5 text-sm text-navy-500">{post.excerpt}</p>
+                    <span className="mt-3 inline-block text-sm font-medium text-accent-600">
+                      Читать →
+                    </span>
+                  </article>
+                </Link>
               </Reveal>
             ))}
           </div>
