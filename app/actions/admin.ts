@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -117,6 +118,74 @@ export async function deactivatePlant(plantId: string): Promise<ActionResult> {
   await requireAdmin();
   await prisma.plant.update({ where: { id: plantId }, data: { status: 'INACTIVE' } });
   revalidatePath('/admin/plants');
+  return { ok: true };
+}
+
+/**
+ * Логины сотрудников завода (роль PLANT) — до этого единственным способом
+ * их завести был `prisma/seed.ts` (только тестовые аккаунты, стирается при
+ * каждом переигрывании сида). Публичная регистрация (`/register`) создаёт
+ * только клиентов. Эти функции дают админу завести реальный логин прямо из
+ * карточки завода, без доступа к базе.
+ */
+export async function listPlantUsers(plantId: string) {
+  await requireAdmin();
+  return prisma.user.findMany({
+    where: { role: 'PLANT', plantId },
+    select: { id: true, name: true, email: true, phone: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+const plantUserSchema = z.object({
+  name: z.string().min(2, 'Укажите имя'),
+  email: z.string().email('Некорректный email'),
+  phone: z.string().optional(),
+  password: z.string().min(6, 'Пароль — минимум 6 символов'),
+});
+
+export async function createPlantUser(plantId: string, formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const parsed = plantUserSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    phone: formData.get('phone') || undefined,
+    password: formData.get('password'),
+  });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+
+  const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  if (existing) return { ok: false, error: 'Пользователь с таким email уже существует' };
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  await prisma.user.create({
+    data: {
+      name: parsed.data.name,
+      email: parsed.data.email,
+      phone: parsed.data.phone || null,
+      passwordHash,
+      role: 'PLANT',
+      plantId,
+    },
+  });
+
+  revalidatePath(`/admin/plants/${plantId}`);
+  return { ok: true };
+}
+
+const resetPasswordSchema = z.object({ password: z.string().min(6, 'Пароль — минимум 6 символов') });
+
+export async function resetPlantUserPassword(userId: string, formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const parsed = resetPasswordSchema.safeParse({ password: formData.get('password') });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  const user = await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+
+  if (user.plantId) revalidatePath(`/admin/plants/${user.plantId}`);
   return { ok: true };
 }
 
