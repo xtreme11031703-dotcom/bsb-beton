@@ -7,6 +7,7 @@ import YandexMap from '@/components/YandexMap';
 import { company } from '@/lib/company';
 import { getPublicPlantLocations } from '@/app/actions/plants';
 import { geocodeAddress } from '@/lib/yandex-geocoder';
+import { PLANT_PHOTO } from '@/lib/category-photos';
 import { BoltIcon, TruckIcon, PumpIcon, FactoryIcon } from '@/components/icons';
 
 const benefits = [
@@ -67,29 +68,41 @@ export default async function HomePage() {
             />
           </div>
 
-          <div className="relative mx-auto max-w-6xl px-4 pb-28 pt-16 sm:px-6 sm:pt-24">
-            <span className="eyebrow">🕐 Работаем ежедневно, {company.workHours.split(', ')[1] ?? '6:00–22:00'}</span>
+          <div className="relative mx-auto grid max-w-6xl gap-10 px-4 pb-28 pt-16 sm:px-6 sm:pt-24 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-8">
+            <div>
+              <span className="eyebrow">🕐 Работаем ежедневно, {company.workHours.split(', ')[1] ?? '6:00–22:00'}</span>
 
-            <h1 className="mt-6 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tightest text-white sm:text-6xl">
-              Бетон с доставкой{' '}
-              <span className="gradient-text animate-gradient-x">по Москве и области</span>
-            </h1>
+              <h1 className="mt-6 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tightest text-white sm:text-6xl">
+                Бетон с доставкой{' '}
+                <span className="gradient-text animate-gradient-x">по Москве и области</span>
+              </h1>
 
-            <p className="mt-5 max-w-xl text-lg text-navy-200">
-              Рассчитайте заказ и оформите доставку за несколько минут — материал, марка, объём
-              и адрес в одной форме.
-            </p>
+              <p className="mt-5 max-w-xl text-lg text-navy-200">
+                Рассчитайте заказ и оформите доставку за несколько минут — материал, марка, объём
+                и адрес в одной форме.
+              </p>
 
-            <div className="mt-9 flex flex-wrap gap-3">
-              <Link href="/order/new" className="btn-primary">
-                Заказать бетон
-              </Link>
-              <Link
-                href="/about"
-                className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/10"
-              >
-                О компании
-              </Link>
+              <div className="mt-9 flex flex-wrap gap-3">
+                <Link href="/order/new" className="btn-primary">
+                  Заказать бетон
+                </Link>
+                <Link
+                  href="/about"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/10"
+                >
+                  О компании
+                </Link>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-3xl border border-white/10 shadow-2xl">
+              <img
+                src={PLANT_PHOTO.url}
+                alt={PLANT_PHOTO.alt}
+                loading="eager"
+                decoding="async"
+                className="aspect-[4/3] w-full object-cover"
+              />
             </div>
           </div>
 
