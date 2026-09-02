@@ -391,6 +391,19 @@ export function formatPrice(value: number | null | undefined): string {
   return `${Math.round(value).toLocaleString('ru-RU')} ₽`;
 }
 
+// На /services прямо заявлено: "базовые цены в среднем ниже рыночных на
+// 30%" (company.faq/страница услуг). Значит наша цена ≈ 70% от условной
+// "рыночной" — отсюда и обратный пересчёт: рыночная = наша / 0.7, а экономия
+// = рыночная - наша = наша * (0.3/0.7). Это оценка для мотивации в интерфейсе
+// ("вот сколько вы примерно экономите"), а не точная цифра по чьему-то
+// прайсу — поэтому в текстах рядом со значением стоит писать "≈".
+const MARKET_MARKUP_OVER_OUR_PRICE = 0.3 / 0.7;
+
+export function estimateMarketSavings(ourTotal: number | null): number | null {
+  if (ourTotal === null || ourTotal <= 0) return null;
+  return Math.round(ourTotal * MARKET_MARKUP_OVER_OUR_PRICE);
+}
+
 // ---------------------------------------------------------------------------
 // Корзина (общий тип для страниц каталога, мастера заказа и контекста lib/cart-context.tsx)
 

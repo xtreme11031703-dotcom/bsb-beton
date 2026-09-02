@@ -24,6 +24,7 @@ import {
   describeCartItemQuantity,
   emptyCartItem,
   formatPrice,
+  estimateMarketSavings,
   getCartTotal,
   getGradeOptions,
   getItemLineTotal,
@@ -172,6 +173,7 @@ export function OrderWizard({
 
   const availableTimeSlots = useMemo(() => availableTimeSlotsFor(details.dateOption), [details.dateOption]);
   const cartTotal = useMemo(() => getCartTotal(cart), [cart]);
+  const cartSavings = useMemo(() => estimateMarketSavings(cartTotal), [cartTotal]);
 
   function updateDetails<K extends keyof OrderDetailsState>(key: K, value: OrderDetailsState[K]) {
     setDetails((current) => ({ ...current, [key]: value }));
@@ -659,9 +661,16 @@ export function OrderWizard({
                   </div>
                 );
               })}
-              <div className="card flex items-center justify-between bg-surface-muted">
-                <span className="font-semibold text-navy-800">Итого</span>
-                <span className="text-lg font-bold text-navy-800">{formatPrice(cartTotal)}</span>
+              <div className="card bg-surface-muted">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-navy-800">Итого</span>
+                  <span className="text-lg font-bold text-navy-800">{formatPrice(cartTotal)}</span>
+                </div>
+                {cartSavings !== null && (
+                  <p className="mt-1 text-xs text-emerald-600">
+                    Экономия ≈ {formatPrice(cartSavings)} по сравнению со средней ценой по рынку
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -833,6 +842,11 @@ export function OrderWizard({
             </div>
 
             <SummaryRow label="Итого" value={formatPrice(cartTotal)} />
+            {cartSavings !== null && (
+              <p className="text-right text-xs text-emerald-600">
+                Экономия ≈ {formatPrice(cartSavings)} по сравнению со средней ценой по рынку
+              </p>
+            )}
             <SummaryRow label="Адрес" value={details.addressText} />
             <SummaryRow
               label="Дата"
