@@ -9,13 +9,9 @@
 // что заданы в .env приложения.
 
 // В отличие от `next dev`/`prisma`, обычный tsx-скрипт .env сам не читает —
-// подгружаем вручную (Node 20.6+). Если файла нет (например, в проде,
-// где переменные заданы платформой хостинга) — просто продолжаем.
-try {
-  process.loadEnvFile();
-} catch {
-  // .env отсутствует — ок
-}
+// подгружаем вручную (работает на любой версии Node, см. scripts/load-env.ts).
+import { loadEnv } from './load-env';
+loadEnv();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const secret = process.env.TELEGRAM_WEBHOOK_SECRET;

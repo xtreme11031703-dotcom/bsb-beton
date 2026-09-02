@@ -3,11 +3,8 @@
 //
 //   npx tsx scripts/telegram-set-menu-button.ts
 
-try {
-  process.loadEnvFile();
-} catch {
-  // .env отсутствует — ок
-}
+import { loadEnv } from './load-env';
+loadEnv();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const appUrl = process.env.NEXT_PUBLIC_APP_URL;
