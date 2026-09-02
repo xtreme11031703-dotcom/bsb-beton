@@ -4,9 +4,14 @@
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const API_BASE = BOT_TOKEN ? `https://api.telegram.org/bot${BOT_TOKEN}` : null;
 
+type InlineKeyboardButton =
+  | { text: string; url: string }
+  | { text: string; web_app: { url: string } };
+
 type SendMessageOptions = {
   parseMode?: 'HTML' | 'Markdown';
   disableWebPagePreview?: boolean;
+  replyMarkup?: { inline_keyboard: InlineKeyboardButton[][] };
 };
 
 /**
@@ -33,6 +38,7 @@ export async function sendTelegramMessage(
         text,
         parse_mode: options.parseMode ?? 'HTML',
         disable_web_page_preview: options.disableWebPagePreview ?? true,
+        reply_markup: options.replyMarkup,
       }),
     });
 
@@ -67,3 +73,8 @@ export function generateLinkCode(): string {
 
 /** Имя бота для ссылок вида t.me/<username> — задаётся один раз в .env после /newbot. */
 export const TELEGRAM_BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || '';
+
+/** URL Telegram Mini App — /miniapp на боевом домене сайта. */
+export const TELEGRAM_MINIAPP_URL = process.env.NEXT_PUBLIC_APP_URL
+  ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/miniapp`
+  : '';

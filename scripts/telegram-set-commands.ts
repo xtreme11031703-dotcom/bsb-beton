@@ -21,6 +21,7 @@ if (!token) {
 
 const commands = [
   { command: 'start', description: 'Начать работу с ботом' },
+  { command: 'app', description: 'Открыть приложение (заказ и статус)' },
   { command: 'link', description: 'Привязать аккаунт с сайта (нужен код из личного кабинета)' },
   { command: 'status', description: 'Статус ваших последних заказов' },
   { command: 'help', description: 'Список команд' },

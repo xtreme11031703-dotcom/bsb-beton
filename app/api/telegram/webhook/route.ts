@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendTelegramMessage } from '@/lib/telegram';
+import { sendTelegramMessage, TELEGRAM_MINIAPP_URL } from '@/lib/telegram';
 import { answerFaq } from '@/lib/telegram-faq';
 import { ORDER_STATUS_LABELS } from '@/lib/utils';
 
@@ -40,8 +40,12 @@ async function handleMessage(chatId: string, text: string) {
     await sendTelegramMessage(
       chatId,
       'Привет! Это бот БСБ — бетон с доставкой.\n\n' +
-        'Чтобы получать уведомления по заказу, зайдите в личный кабинет на сайте и нажмите «Получить код», затем отправьте сюда команду /link КОД.\n\n' +
-        'Также можно просто спросить про цены, марки бетона, доставку или адреса заводов — постараюсь ответить.',
+        'Быстрее всего оформить и отслеживать заказ прямо в приложении ниже. ' +
+        'Также можно спросить про цены, марки бетона, доставку или адреса заводов — постараюсь ответить, ' +
+        'а если у вас уже есть аккаунт на сайте — привяжите его командой /link КОД (код — в личном кабинете).',
+      TELEGRAM_MINIAPP_URL
+        ? { replyMarkup: { inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: TELEGRAM_MINIAPP_URL } }]] } }
+        : undefined,
     );
     return;
   }
@@ -64,8 +68,19 @@ async function handleMessage(chatId: string, text: string) {
   if (text.startsWith('/help')) {
     await sendTelegramMessage(
       chatId,
-      'Команды:\n/link КОД — привязать аккаунт с сайта\n/status — статус ваших последних заказов\n\nИли просто напишите вопрос про бетон, цены или доставку.',
+      'Команды:\n/app — открыть приложение (заказ и статус)\n/link КОД — привязать аккаунт с сайта\n/status — статус ваших последних заказов\n\nИли просто напишите вопрос про бетон, цены или доставку.',
     );
+    return;
+  }
+
+  if (text.startsWith('/app')) {
+    if (!TELEGRAM_MINIAPP_URL) {
+      await sendTelegramMessage(chatId, 'Приложение пока не настроено — попробуйте позже.');
+      return;
+    }
+    await sendTelegramMessage(chatId, 'Открыть приложение:', {
+      replyMarkup: { inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: TELEGRAM_MINIAPP_URL } }]] },
+    });
     return;
   }
 
