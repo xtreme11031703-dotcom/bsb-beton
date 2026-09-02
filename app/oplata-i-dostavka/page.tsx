@@ -3,6 +3,9 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import { company } from '@/lib/company';
+import { DocumentCheckIcon, CreditCardIcon, BanknoteIcon } from '@/components/icons';
+
+const paymentIcons = [DocumentCheckIcon, CreditCardIcon, BanknoteIcon];
 
 export const metadata = {
   title: `Оплата и доставка — ${company.fullName}`,
@@ -35,16 +38,19 @@ export default function OplataIDostavkaPage() {
           </Reveal>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {company.paymentMethods.map((method, i) => (
-              <Reveal key={method} delayMs={i * 90}>
-                <div className="card h-full">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
-                    {i + 1}
+            {company.paymentMethods.map((method, i) => {
+              const Icon = paymentIcons[i % paymentIcons.length];
+              return (
+                <Reveal key={method} delayMs={i * 90}>
+                  <div className="card h-full">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <p className="mt-3 text-sm font-medium text-navy-700">{method}</p>
                   </div>
-                  <p className="mt-3 text-sm font-medium text-navy-700">{method}</p>
-                </div>
-              </Reveal>
-            ))}
+                </Reveal>
+              );
+            })}
           </div>
         </section>
 

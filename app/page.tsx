@@ -7,24 +7,29 @@ import YandexMap from '@/components/YandexMap';
 import { company } from '@/lib/company';
 import { getPublicPlantLocations } from '@/app/actions/plants';
 import { geocodeAddress } from '@/lib/yandex-geocoder';
+import { BoltIcon, TruckIcon, PumpIcon, FactoryIcon } from '@/components/icons';
 
 const benefits = [
   {
     title: 'Быстрая подача заявки',
     text: 'Оформление заказа занимает пару минут — без звонков и лишних форм.',
+    icon: BoltIcon,
     big: true,
   },
   {
     title: 'Доставка по Москве и МО',
     text: 'Работаем с проверенными заводами в радиусе всего региона.',
+    icon: TruckIcon,
   },
   {
     title: 'Бетононасос',
     text: 'Подберём автобетононасос или стационарный насос под ваш объект.',
+    icon: PumpIcon,
   },
   {
     title: 'Проверенные заводы',
     text: 'Заказ получает завод, который ближе и готов взять его первым.',
+    icon: FactoryIcon,
   },
 ];
 
@@ -126,7 +131,14 @@ export default async function HomePage() {
                     b.big ? 'bg-navy-800 text-white' : ''
                   }`}
                 >
-                  <h3 className={`font-semibold ${b.big ? 'text-white' : 'text-navy-700'}`}>{b.title}</h3>
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl ${
+                      b.big ? 'bg-white/10 text-white' : 'bg-accent-500/10 text-accent-600'
+                    }`}
+                  >
+                    <b.icon className="h-6 w-6" />
+                  </div>
+                  <h3 className={`mt-3 font-semibold ${b.big ? 'text-white' : 'text-navy-700'}`}>{b.title}</h3>
                   <p className={`mt-1.5 text-sm ${b.big ? 'text-navy-200' : 'text-navy-500'}`}>{b.text}</p>
                 </div>
               </Reveal>

@@ -3,6 +3,16 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import { company } from '@/lib/company';
+import { LayersIcon, MapPinIcon, ShieldCheckIcon, ThermalIcon, PumpIcon } from '@/components/icons';
+
+const serviceIcons: Record<string, typeof LayersIcon> = {
+  beton: LayersIcon,
+  'toshchiy-beton': MapPinIcon,
+  'vysokoprochnyy-beton': ShieldCheckIcon,
+  polistirolbeton: ThermalIcon,
+  rastvory: LayersIcon,
+  'arenda-betononasosa': PumpIcon,
+};
 
 export const metadata = {
   title: `Услуги и цены — ${company.fullName}`,
@@ -31,10 +41,15 @@ export default function ServicesPage() {
 
         <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {company.serviceCategories.map((cat, i) => (
+            {company.serviceCategories.map((cat, i) => {
+              const Icon = serviceIcons[cat.slug] ?? LayersIcon;
+              return (
               <Reveal key={cat.slug} delayMs={i * 80}>
                 <div className="card flex h-full flex-col transition-transform hover:-translate-y-1 hover:shadow-lg">
-                  <h3 className="text-lg font-semibold text-navy-700">{cat.title}</h3>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="mt-3 text-lg font-semibold text-navy-700">{cat.title}</h3>
                   <p className="mt-2 flex-1 text-sm text-navy-500">{cat.description}</p>
 
                   {'grades' in cat && cat.grades && (
@@ -59,7 +74,8 @@ export default function ServicesPage() {
                   )}
                 </div>
               </Reveal>
-            ))}
+              );
+            })}
           </div>
         </section>
 

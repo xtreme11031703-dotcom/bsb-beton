@@ -4,6 +4,9 @@ import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import { CountUp } from '@/components/CountUp';
 import { company } from '@/lib/company';
+import { ClockIcon, TruckIcon, DocumentCheckIcon, RouteIcon } from '@/components/icons';
+
+const uspIcons = [ClockIcon, TruckIcon, DocumentCheckIcon, RouteIcon];
 
 export const metadata = {
   title: `О компании — ${company.fullName}`,
@@ -48,14 +51,20 @@ export default function AboutPage() {
           </Reveal>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {company.usps.map((u, i) => (
-              <Reveal key={u.title} delayMs={i * 100}>
-                <div className="card h-full transition-transform hover:-translate-y-1 hover:shadow-lg">
-                  <h3 className="font-semibold text-navy-700">{u.title}</h3>
-                  <p className="mt-1.5 text-sm text-navy-500">{u.text}</p>
-                </div>
-              </Reveal>
-            ))}
+            {company.usps.map((u, i) => {
+              const Icon = uspIcons[i % uspIcons.length];
+              return (
+                <Reveal key={u.title} delayMs={i * 100}>
+                  <div className="card h-full transition-transform hover:-translate-y-1 hover:shadow-lg">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <h3 className="mt-3 font-semibold text-navy-700">{u.title}</h3>
+                    <p className="mt-1.5 text-sm text-navy-500">{u.text}</p>
+                  </div>
+                </Reveal>
+              );
+            })}
           </div>
         </section>
 
