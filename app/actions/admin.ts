@@ -66,6 +66,55 @@ export async function listAllPlants() {
   });
 }
 
+const resetPasswordSchemaShared = z.object({ password: z.string().min(6, 'Пароль — минимум 6 символов') });
+
+export async function getClient(id: string) {
+  await requireAdmin();
+  return prisma.user.findFirst({ where: { id, role: 'CLIENT' } });
+}
+
+const clientSchema = z.object({
+  name: z.string().min(2, 'Укажите имя'),
+  email: z.string().email('Некорректный email'),
+  phone: z.string().optional(),
+});
+
+export async function updateClient(id: string, formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const parsed = clientSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    phone: formData.get('phone') || undefined,
+  });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+
+  const emailOwner = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  if (emailOwner && emailOwner.id !== id) {
+    return { ok: false, error: 'Этот email уже занят другим пользователем' };
+  }
+
+  await prisma.user.update({
+    where: { id },
+    data: { name: parsed.data.name, email: parsed.data.email, phone: parsed.data.phone || null },
+  });
+
+  revalidatePath(`/admin/clients/${id}`);
+  revalidatePath('/admin/clients');
+  return { ok: true };
+}
+
+export async function resetClientPassword(id: string, formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const parsed = resetPasswordSchemaShared.safeParse({ password: formData.get('password') });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  await prisma.user.update({ where: { id }, data: { passwordHash } });
+  return { ok: true };
+}
+
 export async function listAllClients() {
   await requireAdmin();
   return prisma.user.findMany({
@@ -174,12 +223,10 @@ export async function createPlantUser(plantId: string, formData: FormData): Prom
   return { ok: true };
 }
 
-const resetPasswordSchema = z.object({ password: z.string().min(6, 'Пароль — минимум 6 символов') });
-
 export async function resetPlantUserPassword(userId: string, formData: FormData): Promise<ActionResult> {
   await requireAdmin();
 
-  const parsed = resetPasswordSchema.safeParse({ password: formData.get('password') });
+  const parsed = resetPasswordSchemaShared.safeParse({ password: formData.get('password') });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { listAllClients } from '@/app/actions/admin';
 
 export default async function AdminClientsPage() {
@@ -19,8 +20,12 @@ export default async function AdminClientsPage() {
           </thead>
           <tbody>
             {clients.map((c) => (
-              <tr key={c.id} className="border-b border-surface-border last:border-0">
-                <td className="px-4 py-3 font-medium text-navy-800">{c.name}</td>
+              <tr key={c.id} className="border-b border-surface-border last:border-0 hover:bg-surface-muted">
+                <td className="px-4 py-3 font-medium text-navy-800">
+                  <Link href={`/admin/clients/${c.id}`} className="block hover:underline">
+                    {c.name}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-navy-600">{c.email}</td>
                 <td className="px-4 py-3 text-navy-600">{c.phone ?? '—'}</td>
                 <td className="px-4 py-3 text-navy-600">{c._count.ordersAsClient}</td>
