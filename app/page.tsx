@@ -33,66 +33,61 @@ export default function HomePage() {
 
       <main>
         {/* HERO */}
-        <section className="relative overflow-hidden bg-navy-900">
-          <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-60" />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-accent-500/20 blur-[100px]"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-40 left-0 h-[26rem] w-[26rem] rounded-full bg-navy-400/25 blur-[100px]"
-          />
-
-          <div className="relative mx-auto max-w-6xl px-4 pb-28 pt-16 sm:px-6 sm:pt-24">
-            <Reveal>
-              <span className="eyebrow">🕐 Работаем ежедневно, {company.workHours.split(', ')[1] ?? '6:00–22:00'}</span>
-            </Reveal>
-
-            <Reveal delayMs={80}>
-              <h1 className="mt-6 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tightest text-white sm:text-6xl">
-                Бетон с доставкой{' '}
-                <span className="gradient-text animate-gradient-x">по Москве и области</span>
-              </h1>
-            </Reveal>
-
-            <Reveal delayMs={160}>
-              <p className="mt-5 max-w-xl text-lg text-navy-200">
-                Рассчитайте заказ и оформите доставку за несколько минут — материал, марка, объём
-                и адрес в одной форме.
-              </p>
-            </Reveal>
-
-            <Reveal delayMs={240}>
-              <div className="mt-9 flex flex-wrap gap-3">
-                <Link href="/order/new" className="btn-primary">
-                  Заказать бетон
-                </Link>
-                <Link
-                  href="/about"
-                  className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/10"
-                >
-                  О компании
-                </Link>
-              </div>
-            </Reveal>
+        <section className="relative bg-navy-900">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 bg-grid-fade opacity-60" />
+            <div
+              aria-hidden
+              className="absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-accent-500/20 blur-[100px]"
+            />
+            <div
+              aria-hidden
+              className="absolute -bottom-40 left-0 h-[26rem] w-[26rem] rounded-full bg-navy-400/25 blur-[100px]"
+            />
           </div>
 
-          {/* Плавающая статистика — перекрывает низ hero */}
-          <Reveal delayMs={320}>
-            <div className="relative mx-auto -mb-16 max-w-5xl px-4 sm:px-6">
-              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-surface-border bg-surface-border shadow-lift sm:grid-cols-3 lg:grid-cols-6">
-                {company.stats.map((stat) => (
-                  <div key={stat.label} className="bg-white px-4 py-6 text-center">
-                    <div className="text-2xl font-extrabold text-navy-800 sm:text-3xl">
-                      <CountUp value={stat.value} suffix={stat.suffix} />
-                    </div>
-                    <div className="mt-1 text-[11px] leading-tight text-navy-500 sm:text-xs">{stat.label}</div>
-                  </div>
-                ))}
-              </div>
+          <div className="relative mx-auto max-w-6xl px-4 pb-28 pt-16 sm:px-6 sm:pt-24">
+            <span className="eyebrow">🕐 Работаем ежедневно, {company.workHours.split(', ')[1] ?? '6:00–22:00'}</span>
+
+            <h1 className="mt-6 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tightest text-white sm:text-6xl">
+              Бетон с доставкой{' '}
+              <span className="gradient-text animate-gradient-x">по Москве и области</span>
+            </h1>
+
+            <p className="mt-5 max-w-xl text-lg text-navy-200">
+              Рассчитайте заказ и оформите доставку за несколько минут — материал, марка, объём
+              и адрес в одной форме.
+            </p>
+
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link href="/order/new" className="btn-primary">
+                Заказать бетон
+              </Link>
+              <Link
+                href="/about"
+                className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/10"
+              >
+                О компании
+              </Link>
             </div>
-          </Reveal>
+          </div>
+
+          {/* Плавающая статистика — перекрывает низ hero. Без Reveal: это
+              контент первого экрана, он должен быть виден сразу, а не
+              "проявляться" при загрузке (анимация transform+opacity на
+              видимом сразу тексте выглядела как временная расфокусировка). */}
+          <div className="relative mx-auto -mb-16 max-w-5xl px-4 sm:px-6">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-surface-border bg-surface-border shadow-lift sm:grid-cols-3 lg:grid-cols-6">
+              {company.stats.map((stat) => (
+                <div key={stat.label} className="flex flex-col items-center justify-center gap-1 bg-white px-3 py-6 text-center sm:px-4">
+                  <div className="text-2xl font-extrabold text-navy-800 sm:text-3xl">
+                    <CountUp value={stat.value} suffix={stat.suffix} />
+                  </div>
+                  <div className="text-[11px] leading-snug text-navy-500 sm:text-xs">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* BENTO-СЕТКА ПРЕИМУЩЕСТВ */}
