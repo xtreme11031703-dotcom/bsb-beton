@@ -16,7 +16,7 @@ export default async function ContactsPage() {
 
   const headOfficeBranch = company.branches.find((b) => b.name === 'Главный офис');
   const headOfficeGeocoded =
-    headOfficeBranch && (headOfficeBranch.address as string) !== 'уточняется'
+    headOfficeBranch
       ? await geocodeAddress(headOfficeBranch.address, 60 * 60 * 24).catch(() => null)
       : null;
   const headOffice = headOfficeGeocoded
@@ -75,8 +75,17 @@ export default async function ContactsPage() {
             {company.branches.map((b, i) => (
               <Reveal key={b.name} delayMs={(i % 6) * 60}>
                 <div className="card h-full">
-                  <h3 className="font-semibold text-navy-700">{b.name}</h3>
-                  <p className="mt-1 text-sm text-navy-500">{b.address}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-navy-700">{b.name}</h3>
+                    {'comingSoon' in b && b.comingSoon && (
+                      <span className="shrink-0 rounded-full bg-accent-500/10 px-2 py-0.5 text-[11px] font-medium text-accent-600">
+                        Скоро открытие
+                      </span>
+                    )}
+                  </div>
+                  {!('comingSoon' in b && b.comingSoon) && (
+                    <p className="mt-1 text-sm text-navy-500">{b.address}</p>
+                  )}
                 </div>
               </Reveal>
             ))}

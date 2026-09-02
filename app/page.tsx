@@ -41,7 +41,7 @@ export default async function HomePage() {
   // сервере, чтобы показать точку на карте вместе с заводами.
   const headOfficeBranch = company.branches.find((b) => b.name === 'Главный офис');
   const headOfficeGeocoded =
-    headOfficeBranch && (headOfficeBranch.address as string) !== 'уточняется'
+    headOfficeBranch
       ? await geocodeAddress(headOfficeBranch.address, 60 * 60 * 24).catch(() => null)
       : null;
   const headOffice = headOfficeGeocoded
