@@ -3,10 +3,13 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { getUnreadChatCount } from '@/app/actions/admin';
 
 const NAV = [
-  { href: '/admin', label: 'Dashboard' },
+  { href: '/admin', label: 'Обзор' },
   { href: '/admin/orders', label: 'Заказы' },
   { href: '/admin/plants', label: 'Заводы' },
   { href: '/admin/clients', label: 'Клиенты' },
+  { href: '/admin/prices', label: 'Цены' },
+  { href: '/admin/blog', label: 'Блог' },
+  { href: '/admin/settings', label: 'Инфо о сайте' },
   { href: '/admin/map', label: 'Карта' },
   { href: '/admin/chats', label: 'Чат' },
 ];

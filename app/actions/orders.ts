@@ -6,6 +6,7 @@ import { getSession, createSession } from '@/lib/session';
 import { hashPassword, verifyPassword } from '@/lib/auth';
 import { generateOrderNumber, distanceKm } from '@/lib/utils';
 import { distinctCategories, getItemLineTotal, getItemUnitPrice, plantCoversCategories, summarizeOrderItems } from '@/lib/catalog';
+import { getPriceTable } from '@/lib/get-price-table';
 import { sendTelegramMessageToMany, siteUrl } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
@@ -120,16 +121,22 @@ export async function submitOrder(input: unknown): Promise<ActionResult> {
     .sort((a, b) => a.distance - b.distance);
 
   const orderNumber = await generateOrderNumber();
+  // Живые цены из /admin/prices — читаем их здесь же, на сервере, вместе с
+  // остальными данными заказа (см. комментарий ниже про unitPrice/lineTotal).
+  const priceTable = await getPriceTable();
 
   const order = await prisma.order.create({
     data: {
       orderNumber,
       clientId: session.userId,
       items: {
-        // Цена считается ЗДЕСЬ, на сервере, по прайсу lib/catalog.ts — а не
-        // принимается от клиента (иначе её можно было бы подделать в запросе).
-        // unitPrice/lineTotal сохраняются как снимок на момент оформления,
-        // см. комментарий у этих полей в prisma/schema.prisma.
+        // Цена считается ЗДЕСЬ, на сервере, по актуальному прайсу
+        // (CatalogPrice из /admin/prices, с запасным вариантом из
+        // lib/catalog.ts) — а не принимается от клиента (иначе её можно было
+        // бы подделать в запросе). unitPrice/lineTotal сохраняются как
+        // снимок на момент оформления, см. комментарий у этих полей в
+        // prisma/schema.prisma — цена изменится в админке позже, а уже
+        // оформленный заказ должен остаться с той ценой, что была при заказе.
         create: data.items.map((item) => ({
           category: item.category,
           concreteGrade: item.concreteGrade,
@@ -145,8 +152,8 @@ export async function submitOrder(input: unknown): Promise<ActionResult> {
           pumpNote: item.pumpNote || null,
           quantity: item.quantity ?? 0,
           additionalWishes: item.additionalWishes || null,
-          unitPrice: getItemUnitPrice(item),
-          lineTotal: getItemLineTotal(item),
+          unitPrice: getItemUnitPrice(item, priceTable),
+          lineTotal: getItemLineTotal(item, priceTable),
         })),
       },
       addressText: data.addressText,

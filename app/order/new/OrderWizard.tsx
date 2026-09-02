@@ -33,6 +33,7 @@ import {
   isCartItemValid,
   itemRequiresGrade,
   type CartItem,
+  type PriceTable,
 } from '@/lib/catalog';
 import type { ConcreteAggregate, MortarKind, ProductCategory, PumpType } from '@prisma/client';
 
@@ -117,10 +118,15 @@ export function OrderWizard({
   isAuthenticated,
   prefillName,
   prefillPhone,
+  priceTable,
 }: {
   isAuthenticated: boolean;
   prefillName: string;
   prefillPhone: string;
+  // Живые цены из /admin/prices (см. lib/get-price-table.ts) — страница
+  // мастера заказа серверная, поэтому цены приходят сюда пропом, а не
+  // читаются из БД прямо в этом клиентском компоненте.
+  priceTable: PriceTable;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -172,7 +178,7 @@ export function OrderWizard({
   }, [cart.length, autoJumped, stepIdx]);
 
   const availableTimeSlots = useMemo(() => availableTimeSlotsFor(details.dateOption), [details.dateOption]);
-  const cartTotal = useMemo(() => getCartTotal(cart), [cart]);
+  const cartTotal = useMemo(() => getCartTotal(cart, priceTable), [cart, priceTable]);
   const cartSavings = useMemo(() => estimateMarketSavings(cartTotal), [cartTotal]);
 
   function updateDetails<K extends keyof OrderDetailsState>(key: K, value: OrderDetailsState[K]) {
@@ -376,8 +382,8 @@ export function OrderWizard({
   );
 
   const draftGradeOptions = draft ? getGradeOptions(draft) : [];
-  const draftUnitPrice = draft ? getItemUnitPrice(draft) : null;
-  const draftLineTotal = draft ? getItemLineTotal(draft) : null;
+  const draftUnitPrice = draft ? getItemUnitPrice(draft, priceTable) : null;
+  const draftLineTotal = draft ? getItemLineTotal(draft, priceTable) : null;
   const draftSpecs = draft ? getSkuSpecs(draft) : null;
 
   return (
@@ -640,7 +646,7 @@ export function OrderWizard({
           ) : (
             <div className="space-y-3">
               {cart.map((item) => {
-                const lineTotal = getItemLineTotal(item);
+                const lineTotal = getItemLineTotal(item, priceTable);
                 return (
                   <div key={item.key} className="card flex items-start justify-between gap-3">
                     <div>
@@ -835,7 +841,7 @@ export function OrderWizard({
                   <span className="text-sm text-navy-500">{describeCartItem(item)}</span>
                   <span className="shrink-0 text-right text-sm font-medium text-navy-800">
                     {describeCartItemQuantity(item) ? `${describeCartItemQuantity(item)} · ` : ''}
-                    {formatPrice(getItemLineTotal(item))}
+                    {formatPrice(getItemLineTotal(item, priceTable))}
                   </span>
                 </div>
               ))}

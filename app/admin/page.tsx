@@ -17,7 +17,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-navy-800">Dashboard</h1>
+      <h1 className="mb-6 text-2xl font-bold text-navy-800">Обзор</h1>
 
       {telegramStatus && (
         <div className="mb-6">

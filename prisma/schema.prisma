@@ -320,3 +320,65 @@ model ChatMessage {
 
   @@index([threadId, createdAt])
 }
+
+// Цена одной позиции прайса (см. lib/catalog.ts) — раньше цены были зашиты
+// прямо в коде (BETON_SKUS и т.п.), любое изменение требовало правки файла и
+// деплоя. Теперь цена редактируется админом на /admin/prices, а код хранит
+// только СТРУКТУРУ прайса (какие марки/наполнители вообще существуют) — это
+// умышленно: список допустимых марок остаётся бизнес-правилом в коде, а не
+// тем, что можно случайно сломать через админку, но САМО ЧИСЛО цены — да.
+//
+// id — детерминированный ключ, собранный из полей строки прайса (см.
+// lib/catalog.ts -> priceEntryId), а не случайный cuid: так сид-скрипт и
+// админка всегда обращаются к одной и той же записи по одному и тому же
+// идентификатору, без отдельного составного уникального индекса с
+// nullable-полями (которые в Postgres не считаются равными друг другу).
+model CatalogPrice {
+  id        String            @id
+  category  ProductCategory
+  aggregate ConcreteAggregate?
+  mortarKind MortarKind?
+  grade     ConcreteGrade?
+  pumpType  PumpType?
+  pumpLength String?
+  price     Float
+  updatedAt DateTime @updatedAt
+}
+
+// Статьи блога — раньше жили только в коде (lib/blog-posts.ts), теперь
+// редактируются админом на /admin/blog. content хранится в упрощённом
+// markdown (см. lib/markdown.ts — самодельный мини-рендер без внешней
+// библиотеки: заголовки/абзацы/жирный/курсив/ссылки/списки, этого достаточно
+// для статьи блога и не тянет в проект лишнюю зависимость).
+model BlogPost {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String
+  content     String
+  published   Boolean   @default(true)
+  publishedAt DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([published, publishedAt])
+}
+
+// Синглтон с часто меняющимися контактными данными и FAQ — раньше жили в
+// lib/company.ts и требовали деплоя на любое изменение (например, при смене
+// номера телефона). Только эта небольшая часть company.ts переехала в базу
+// — остальное (филиалы, статистика, разделы каталога) осталось в коде,
+// потому что завязано на маршрутизацию и другую бизнес-логику, трогать
+// которую через простую админ-форму рискованно. id всегда "default" — в
+// таблице ровно одна строка.
+model SiteSettings {
+  id         String @id @default("default")
+  phone      String
+  phoneHref  String
+  email      String
+  workHours  String
+  // Массив { question, answer } — тот же формат, что раньше был в
+  // company.faq, просто теперь редактируемый.
+  faq        Json
+  updatedAt  DateTime @updatedAt
+}

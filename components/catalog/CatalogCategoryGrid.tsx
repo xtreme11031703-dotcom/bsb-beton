@@ -16,8 +16,10 @@ import {
   VYSOKOPROCHNYY_BETON_SKUS,
   emptyCartItem,
   formatPrice,
+  priceEntryId,
   type BetonSku,
   type MortarSku,
+  type PriceTable,
   type PumpSku,
 } from '@/lib/catalog';
 import type { ConcreteAggregate, MortarKind, ProductCategory, PumpType } from '@prisma/client';
@@ -26,20 +28,24 @@ import type { ConcreteAggregate, MortarKind, ProductCategory, PumpType } from '@
 // вынесена из серверного page.tsx, потому что нужен доступ к общей корзине
 // (lib/cart-context.tsx) и локальное состояние переключения вкладок
 // (наполнитель/вид раствора/тип насоса) и количества у карточек товаров.
-export function CatalogCategoryGrid({ category }: { category: ProductCategory }) {
+// priceTable приходит с сервера (там, где есть доступ к Prisma) — цены на
+// карточках берутся из него, а зашитые в SKU-таблицы значения остаются
+// запасным вариантом на случай, если для конкретной строки ещё нет
+// переопределения в базе (см. lib/catalog.ts -> getItemUnitPrice).
+export function CatalogCategoryGrid({ category, priceTable }: { category: ProductCategory; priceTable: PriceTable }) {
   switch (category) {
     case 'BETON':
-      return <BetonGrid />;
+      return <BetonGrid priceTable={priceTable} />;
     case 'TOSHCHIY_BETON':
-      return <FlatBetonGrid category={category} skus={TOSHCHIY_BETON_SKUS} />;
+      return <FlatBetonGrid category={category} skus={TOSHCHIY_BETON_SKUS} priceTable={priceTable} />;
     case 'VYSOKOPROCHNYY_BETON':
-      return <FlatBetonGrid category={category} skus={VYSOKOPROCHNYY_BETON_SKUS} />;
+      return <FlatBetonGrid category={category} skus={VYSOKOPROCHNYY_BETON_SKUS} priceTable={priceTable} />;
     case 'POLISTIROLBETON':
-      return <FlatBetonGrid category={category} skus={POLISTIROLBETON_SKUS} />;
+      return <FlatBetonGrid category={category} skus={POLISTIROLBETON_SKUS} priceTable={priceTable} />;
     case 'RASTVORY':
-      return <RastvoryGrid />;
+      return <RastvoryGrid priceTable={priceTable} />;
     case 'NASOS':
-      return <NasosGrid />;
+      return <NasosGrid priceTable={priceTable} />;
     default:
       return null;
   }
@@ -68,7 +74,7 @@ function ContinueToCartLink() {
   );
 }
 
-function BetonGrid() {
+function BetonGrid({ priceTable }: { priceTable: PriceTable }) {
   const { addItem } = useCart();
   const [aggregate, setAggregate] = useState<ConcreteAggregate>('GRAVEL');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -96,11 +102,13 @@ function BetonGrid() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {skus.map((sku) => {
           const qty = quantities[sku.grade] ?? 10;
+          const price = priceTable[priceEntryId({ category: 'BETON', aggregate, concreteGrade: sku.grade })] ?? sku.price;
           return (
             <SkuCard
               key={sku.grade}
               title={`Бетон ${sku.grade}, класс ${sku.classLabel}`}
               sku={sku}
+              price={price}
               quantity={qty}
               onQuantityChange={(v) => setQuantities((c) => ({ ...c, [sku.grade]: v }))}
               added={addedKey === sku.grade}
@@ -118,7 +126,15 @@ function BetonGrid() {
   );
 }
 
-function FlatBetonGrid({ category, skus }: { category: ProductCategory; skus: BetonSku[] }) {
+function FlatBetonGrid({
+  category,
+  skus,
+  priceTable,
+}: {
+  category: ProductCategory;
+  skus: BetonSku[];
+  priceTable: PriceTable;
+}) {
   const { addItem } = useCart();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const { addedKey, flash } = useAddedFlash();
@@ -128,11 +144,13 @@ function FlatBetonGrid({ category, skus }: { category: ProductCategory; skus: Be
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {skus.map((sku) => {
           const qty = quantities[sku.grade] ?? 10;
+          const price = priceTable[priceEntryId({ category, concreteGrade: sku.grade })] ?? sku.price;
           return (
             <SkuCard
               key={sku.grade}
               title={`${sku.grade}, класс ${sku.classLabel}`}
               sku={sku}
+              price={price}
               quantity={qty}
               onQuantityChange={(v) => setQuantities((c) => ({ ...c, [sku.grade]: v }))}
               added={addedKey === sku.grade}
@@ -150,7 +168,7 @@ function FlatBetonGrid({ category, skus }: { category: ProductCategory; skus: Be
   );
 }
 
-function RastvoryGrid() {
+function RastvoryGrid({ priceTable }: { priceTable: PriceTable }) {
   const { addItem } = useCart();
   const [mortarKind, setMortarKind] = useState<MortarKind>('CEMENT');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -179,11 +197,15 @@ function RastvoryGrid() {
         {skus.map((sku) => {
           const key = sku.grade ?? sku.label ?? 'default';
           const qty = quantities[key] ?? 10;
+          const price =
+            priceTable[priceEntryId({ category: 'RASTVORY', mortarKind, concreteGrade: sku.grade ?? null })] ??
+            sku.price;
           return (
             <SkuCard
               key={key}
               title={sku.grade ? `${MORTAR_KIND_LABELS[mortarKind]} ${sku.grade}` : sku.label!}
               sku={sku}
+              price={price}
               quantity={qty}
               onQuantityChange={(v) => setQuantities((c) => ({ ...c, [key]: v }))}
               added={addedKey === key}
@@ -201,7 +223,7 @@ function RastvoryGrid() {
   );
 }
 
-function NasosGrid() {
+function NasosGrid({ priceTable }: { priceTable: PriceTable }) {
   const { addItem } = useCart();
   const [pumpType, setPumpType] = useState<PumpType>('AUTO');
   const { addedKey, flash } = useAddedFlash();
@@ -226,18 +248,23 @@ function NasosGrid() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {skus.map((sku) => (
-          <PumpSkuCard
-            key={sku.length}
-            pumpType={pumpType}
-            sku={sku}
-            added={addedKey === sku.length}
-            onAdd={() => {
-              addItem({ ...emptyCartItem('NASOS'), pumpType, pumpLength: sku.length });
-              flash(sku.length);
-            }}
-          />
-        ))}
+        {skus.map((sku) => {
+          const price =
+            priceTable[priceEntryId({ category: 'NASOS', pumpType, pumpLength: sku.length })] ?? sku.price;
+          return (
+            <PumpSkuCard
+              key={sku.length}
+              pumpType={pumpType}
+              sku={sku}
+              price={price}
+              added={addedKey === sku.length}
+              onAdd={() => {
+                addItem({ ...emptyCartItem('NASOS'), pumpType, pumpLength: sku.length });
+                flash(sku.length);
+              }}
+            />
+          );
+        })}
       </div>
 
       <ContinueToCartLink />
@@ -248,6 +275,7 @@ function NasosGrid() {
 function SkuCard({
   title,
   sku,
+  price,
   quantity,
   onQuantityChange,
   added,
@@ -255,6 +283,7 @@ function SkuCard({
 }: {
   title: string;
   sku: BetonSku | MortarSku;
+  price: number;
   quantity: number;
   onQuantityChange: (v: number) => void;
   added: boolean;
@@ -291,7 +320,7 @@ function SkuCard({
         )}
       </dl>
 
-      <p className="mt-3 text-lg font-bold text-navy-800">{formatPrice(sku.price)} <span className="text-sm font-normal text-navy-400">/ м³</span></p>
+      <p className="mt-3 text-lg font-bold text-navy-800">{formatPrice(price)} <span className="text-sm font-normal text-navy-400">/ м³</span></p>
 
       <div className="mt-auto flex items-center gap-2 pt-3">
         <input
@@ -314,11 +343,13 @@ function SkuCard({
 function PumpSkuCard({
   pumpType,
   sku,
+  price,
   added,
   onAdd,
 }: {
   pumpType: PumpType;
   sku: PumpSku;
+  price: number | null;
   added: boolean;
   onAdd: () => void;
 }) {
@@ -327,8 +358,8 @@ function PumpSkuCard({
       <h3 className="font-semibold text-navy-800">
         {PUMP_TYPE_LABELS[pumpType]} {sku.length}
       </h3>
-      <p className="mt-3 text-lg font-bold text-navy-800">{formatPrice(sku.price)}</p>
-      {sku.price === null && <p className="mt-1 text-xs text-navy-400">Цена уточняется при оформлении</p>}
+      <p className="mt-3 text-lg font-bold text-navy-800">{formatPrice(price)}</p>
+      {price === null && <p className="mt-1 text-xs text-navy-400">Цена уточняется при оформлении</p>}
       <div className="mt-auto pt-3">
         <button type="button" onClick={onAdd} className="btn-primary w-full !py-2 text-sm">
           В корзину

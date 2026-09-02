@@ -346,8 +346,45 @@ type PriceLookupItem = {
   pumpLength?: string | null;
 };
 
-/** Цена за м³ (для насоса — не имеет смысла, там сразу getItemLineTotal). */
-export function getItemUnitPrice(item: PriceLookupItem): number | null {
+// ---------------------------------------------------------------------------
+// Живые цены из админки (модель CatalogPrice) поверх зашитых в код значений.
+//
+// Список марок/наполнителей и то, какие поля вообще есть у позиции — это
+// бизнес-правило, оно остаётся в коде (см. BETON_SKUS и т.п. выше). А вот
+// САМА ЦЕНА теперь редактируется на /admin/prices и хранится в базе — код
+// ниже лишь добавляет слой "если для этой строки есть цена в базе — берём
+// её, иначе используем то значение, что зашито в SKU-таблицах как запасной
+// вариант". Так старое поведение (без priceTable) продолжает работать везде,
+// где его ещё не обновили, а по мере обновления вызовов подключается живая
+// цена — не нужно было одномоментно переписывать вообще всё.
+export type PriceTable = Record<string, number>;
+
+/** Детерминированный ключ строки прайса — один и тот же для сид-скрипта,
+ * админки и живого расчёта цены, чтобы все три обращались к одной записи. */
+export function priceEntryId(item: {
+  category: ProductCategory;
+  aggregate?: ConcreteAggregate | null;
+  concreteGrade?: ConcreteGrade | null;
+  mortarKind?: MortarKind | null;
+  pumpType?: PumpType | null;
+  pumpLength?: string | null;
+}): string {
+  return [
+    item.category,
+    item.aggregate ?? '-',
+    item.mortarKind ?? '-',
+    item.concreteGrade ?? '-',
+    item.pumpType ?? '-',
+    item.pumpLength ?? '-',
+  ].join(':');
+}
+
+/** Цена за м³ (для насоса — не имеет смысла, там сразу getItemLineTotal).
+ * priceTable — необязательный: без него функция ведёт себя как раньше
+ * (только зашитые в код цены). */
+export function getItemUnitPrice(item: PriceLookupItem, priceTable?: PriceTable): number | null {
+  const override = priceTable?.[priceEntryId(item)];
+  if (override !== undefined) return override;
   switch (item.category) {
     case 'BETON':
       return findBetonSku(item.aggregate, item.concreteGrade)?.price ?? null;
@@ -367,19 +404,27 @@ export function getItemUnitPrice(item: PriceLookupItem): number | null {
 /** Итог по позиции: unitPrice × quantity для объёмных категорий, либо
  * фиксированная цена аренды насоса. null — цена не определена (например,
  * произвольная длина стрелы "Другой") — тогда сумма по заказу уточняется. */
-export function getItemLineTotal(item: PriceLookupItem & { quantity?: number | null }): number | null {
+export function getItemLineTotal(
+  item: PriceLookupItem & { quantity?: number | null },
+  priceTable?: PriceTable,
+): number | null {
   if (item.category === 'NASOS') {
+    const override = priceTable?.[priceEntryId(item)];
+    if (override !== undefined) return override;
     return findPumpSku(item.pumpType, item.pumpLength)?.price ?? null;
   }
-  const unit = getItemUnitPrice(item);
+  const unit = getItemUnitPrice(item, priceTable);
   if (unit === null) return null;
   return unit * (item.quantity ?? 0);
 }
 
-export function getCartTotal(items: (PriceLookupItem & { quantity?: number | null })[]): number | null {
+export function getCartTotal(
+  items: (PriceLookupItem & { quantity?: number | null })[],
+  priceTable?: PriceTable,
+): number | null {
   let total = 0;
   for (const item of items) {
-    const line = getItemLineTotal(item);
+    const line = getItemLineTotal(item, priceTable);
     if (line === null) return null;
     total += line;
   }
@@ -402,6 +447,116 @@ const MARKET_MARKUP_OVER_OUR_PRICE = 0.3 / 0.7;
 export function estimateMarketSavings(ourTotal: number | null): number | null {
   if (ourTotal === null || ourTotal <= 0) return null;
   return Math.round(ourTotal * MARKET_MARKUP_OVER_OUR_PRICE);
+}
+
+// ---------------------------------------------------------------------------
+// Полный список строк прайса — используется дважды: сид-скриптом
+// (scripts/seed-catalog-prices.ts), чтобы завести в БД запись CatalogPrice на
+// каждую позицию с ценой по умолчанию из кода, и админкой (/admin/prices),
+// чтобы отрисовать редактируемую таблицу даже до первого запуска сида (тогда
+// просто показываются значения по умолчанию, которые ещё ни разу не
+// сохранялись как переопределение).
+
+export type CatalogPriceRow = {
+  id: string;
+  category: ProductCategory;
+  aggregate?: ConcreteAggregate;
+  mortarKind?: MortarKind;
+  grade?: ConcreteGrade;
+  pumpType?: PumpType;
+  pumpLength?: string;
+  label: string;
+  defaultPrice: number;
+};
+
+export function getAllPriceRows(): CatalogPriceRow[] {
+  const rows: CatalogPriceRow[] = [];
+
+  (Object.keys(BETON_SKUS) as ConcreteAggregate[]).forEach((aggregate) => {
+    BETON_SKUS[aggregate].forEach((sku) => {
+      rows.push({
+        id: priceEntryId({ category: 'BETON', aggregate, concreteGrade: sku.grade }),
+        category: 'BETON',
+        aggregate,
+        grade: sku.grade,
+        label: `${sku.grade}, ${CONCRETE_AGGREGATE_LABELS[aggregate]}`,
+        defaultPrice: sku.price,
+      });
+    });
+  });
+
+  TOSHCHIY_BETON_SKUS.forEach((sku) => {
+    rows.push({
+      id: priceEntryId({ category: 'TOSHCHIY_BETON', concreteGrade: sku.grade }),
+      category: 'TOSHCHIY_BETON',
+      grade: sku.grade,
+      label: sku.grade,
+      defaultPrice: sku.price,
+    });
+  });
+
+  VYSOKOPROCHNYY_BETON_SKUS.forEach((sku) => {
+    rows.push({
+      id: priceEntryId({ category: 'VYSOKOPROCHNYY_BETON', concreteGrade: sku.grade }),
+      category: 'VYSOKOPROCHNYY_BETON',
+      grade: sku.grade,
+      label: sku.grade,
+      defaultPrice: sku.price,
+    });
+  });
+
+  POLISTIROLBETON_SKUS.forEach((sku) => {
+    rows.push({
+      id: priceEntryId({ category: 'POLISTIROLBETON', concreteGrade: sku.grade }),
+      category: 'POLISTIROLBETON',
+      grade: sku.grade,
+      label: sku.grade,
+      defaultPrice: sku.price,
+    });
+  });
+
+  (Object.keys(MORTAR_SKUS) as MortarKind[]).forEach((mortarKind) => {
+    MORTAR_SKUS[mortarKind].forEach((sku) => {
+      rows.push({
+        id: priceEntryId({ category: 'RASTVORY', mortarKind, concreteGrade: sku.grade ?? null }),
+        category: 'RASTVORY',
+        mortarKind,
+        grade: sku.grade,
+        label: sku.grade
+          ? `${MORTAR_KIND_LABELS[mortarKind]}, ${sku.grade}`
+          : (sku.label ?? MORTAR_KIND_LABELS[mortarKind]),
+        defaultPrice: sku.price,
+      });
+    });
+  });
+
+  AUTO_PUMP_SKUS.forEach((sku) => {
+    // "Другой" — цена всегда "уточняется" по замыслу (произвольная длина
+    // стрелы), редактировать в админке нечего.
+    if (sku.price === null) return;
+    rows.push({
+      id: priceEntryId({ category: 'NASOS', pumpType: 'AUTO', pumpLength: sku.length }),
+      category: 'NASOS',
+      pumpType: 'AUTO',
+      pumpLength: sku.length,
+      label: `${PUMP_TYPE_LABELS.AUTO}, ${sku.length}`,
+      defaultPrice: sku.price,
+    });
+  });
+
+  STATIONARY_PUMP_SKUS.forEach((sku) => {
+    if (sku.price === null) return;
+    rows.push({
+      id: priceEntryId({ category: 'NASOS', pumpType: 'STATIONARY', pumpLength: sku.length }),
+      category: 'NASOS',
+      pumpType: 'STATIONARY',
+      pumpLength: sku.length,
+      label: `${PUMP_TYPE_LABELS.STATIONARY}, ${sku.length}`,
+      defaultPrice: sku.price,
+    });
+  });
+
+  return rows;
 }
 
 // ---------------------------------------------------------------------------

@@ -5,12 +5,20 @@ import { Reveal } from '@/components/Reveal';
 import { PhotoHero } from '@/components/PhotoHero';
 import { company } from '@/lib/company';
 import { categorySlugToKey } from '@/lib/catalog';
+import { getPriceTable } from '@/lib/get-price-table';
 import { CATEGORY_PHOTOS, PLANT_PHOTO } from '@/lib/category-photos';
 import { CatalogCategoryGrid } from '@/components/catalog/CatalogCategoryGrid';
 
 export function generateStaticParams() {
   return company.serviceCategories.map((c) => ({ category: c.slug }));
 }
+
+// Цены на странице теперь читаются из БД (CatalogPrice, редактируется в
+// /admin/prices) — если оставить страницу статической (как раньше, пока
+// цены были зашиты в код), правка цены админом не появлялась бы на сайте
+// без пересборки. force-dynamic заставляет читать актуальные цены при каждом
+// заходе, а не один раз на этапе сборки.
+export const dynamic = 'force-dynamic';
 
 export function generateMetadata({ params }: { params: { category: string } }) {
   const serviceCategory = company.serviceCategories.find((c) => c.slug === params.category);
@@ -20,12 +28,13 @@ export function generateMetadata({ params }: { params: { category: string } }) {
   };
 }
 
-export default function CatalogCategoryPage({ params }: { params: { category: string } }) {
+export default async function CatalogCategoryPage({ params }: { params: { category: string } }) {
   const serviceCategory = company.serviceCategories.find((c) => c.slug === params.category);
   const category = categorySlugToKey(params.category);
   if (!serviceCategory || !category) notFound();
 
   const photo = CATEGORY_PHOTOS[params.category] ?? PLANT_PHOTO;
+  const priceTable = await getPriceTable();
 
   return (
     <div className="min-h-screen">
@@ -42,7 +51,7 @@ export default function CatalogCategoryPage({ params }: { params: { category: st
         </PhotoHero>
 
         <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-          <CatalogCategoryGrid category={category} />
+          <CatalogCategoryGrid category={category} priceTable={priceTable} />
         </section>
       </main>
 
