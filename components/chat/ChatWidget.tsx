@@ -102,11 +102,22 @@ export function ChatWidget() {
     });
   }
 
-  // Кнопки быстрых вопросов показываем только в самом начале диалога — пока
-  // есть только приветствие бота (или диалог ещё не загрузился). После
-  // первого сообщения (не важно, через кнопку или свободным текстом) дальше
-  // это обычный чат без кнопок, чтобы не загромождать переписку.
-  const showQuickTopics = messages.length <= 1;
+  // Раньше кнопки показывались только в самом начале диалога (пока не было
+  // ни одного сообщения от посетителя) и после первого клика пропадали
+  // навсегда — приходилось печатать вопрос текстом, если хотелось спросить
+  // что-то ещё из списка. Теперь кнопки появляются заново после КАЖДОГО
+  // ответа бота (пока остались темы, которые ещё не спрашивали) — и прячутся,
+  // только пока ждём ответа или если в чат уже вступил живой человек-админ
+  // (не мешаем настоящему разговору кнопками с типовыми вопросами).
+  const askedTopicIds = new Set(
+    messages
+      .filter((m) => m.sender === 'VISITOR')
+      .map((m) => QUICK_TOPICS.find((t) => t.question === m.text)?.id)
+      .filter((id): id is number => id !== undefined),
+  );
+  const remainingQuickTopics = QUICK_TOPICS.filter((t) => !askedTopicIds.has(t.id));
+  const lastMessage = messages[messages.length - 1];
+  const showQuickTopics = remainingQuickTopics.length > 0 && (!lastMessage || lastMessage.sender === 'BOT');
 
   return (
     <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
@@ -151,7 +162,7 @@ export function ChatWidget() {
 
             {showQuickTopics && threadId && (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {QUICK_TOPICS.map((topic) => (
+                {remainingQuickTopics.map((topic) => (
                   <button
                     key={topic.id}
                     type="button"
