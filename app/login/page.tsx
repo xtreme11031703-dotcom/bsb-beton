@@ -20,12 +20,14 @@ export default function LoginPage() {
             Зарегистрироваться
           </Link>
         </p>
-        <div className="mt-8 rounded-xl border border-dashed border-surface-border p-4 text-xs text-navy-400">
-          <p className="font-medium text-navy-500">Тестовые аккаунты (demo)</p>
-          <p className="mt-1">Админ: admin@bsb.test / Admin123!</p>
-          <p>Завод: plant1@bsb.test / Plant123!</p>
-          <p>Клиент: client@bsb.test / Client123!</p>
-        </div>
+        {process.env.NODE_ENV !== 'production' && (
+          <div className="mt-8 rounded-xl border border-dashed border-surface-border p-4 text-xs text-navy-400">
+            <p className="font-medium text-navy-500">Тестовые аккаунты (только в деве, не в проде)</p>
+            <p className="mt-1">Админ: admin@bsb.test / Admin123!</p>
+            <p>Завод: plant1@bsb.test / Plant123!</p>
+            <p>Клиент: client@bsb.test / Client123!</p>
+          </div>
+        )}
       </main>
     </div>
   );

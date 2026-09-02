@@ -78,3 +78,15 @@ export const TELEGRAM_BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNA
 export const TELEGRAM_MINIAPP_URL = process.env.NEXT_PUBLIC_APP_URL
   ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/miniapp`
   : '';
+
+/**
+ * Собирает ссылку на страницу САЙТА (не bsb-beton.ru — это отдельная, чужая
+ * для этого приложения компания-домен) для текстов сообщений бота. Домен
+ * берётся из NEXT_PUBLIC_APP_URL — той же переменной, что и для Mini App.
+ * Если она не задана в окружении, возвращаем просто путь, а не битую ссылку
+ * на посторонний сайт.
+ */
+export function siteUrl(path: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || '';
+  return `${base}${path}`;
+}

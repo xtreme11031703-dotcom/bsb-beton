@@ -99,6 +99,19 @@ function todayISO(offsetDays = 0) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Для доставки «сегодня» скрываем слоты, которые уже прошли (или начинаются
+ * меньше чем через час — заводу нужно время подготовиться и выехать). */
+function availableTimeSlotsFor(dateOption: FormState['dateOption']): string[] {
+  if (dateOption !== 'today') return TIME_SLOTS;
+  const now = new Date();
+  const minMinutes = now.getHours() * 60 + now.getMinutes() + 60;
+  return TIME_SLOTS.filter((slot) => {
+    const [from] = slot.split('–');
+    const [h, m] = from.split(':').map(Number);
+    return h * 60 + m > minMinutes;
+  });
+}
+
 export function OrderWizard({
   isAuthenticated,
   prefillName,
@@ -176,6 +189,11 @@ export function OrderWizard({
 
   const step = steps[stepIdx];
 
+  const availableTimeSlots = useMemo(
+    () => availableTimeSlotsFor(form.dateOption),
+    [form.dateOption]
+  );
+
   function update<K extends keyof FormState>(
     key: K,
     value: FormState[K]
@@ -183,6 +201,17 @@ export function OrderWizard({
     setForm((current) => ({
       ...current,
       [key]: value,
+    }));
+  }
+
+  /** Смена даты доставки — заодно сбрасываем ранее выбранный слот времени:
+   * он мог относиться к другому дню и больше не быть актуальным (например,
+   * уже прошедшее время при переключении на «Сегодня»). */
+  function selectDateOption(option: FormState['dateOption']) {
+    setForm((current) => ({
+      ...current,
+      dateOption: option,
+      timeSlot: '',
     }));
   }
 
@@ -860,50 +889,6 @@ export function OrderWizard({
               );
             }}
           />
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="field-label">
-                Широта
-              </label>
-
-              <input
-                type="number"
-                step="0.000001"
-                className="field-input"
-                value={form.latitude}
-                onChange={(event) =>
-                  update(
-                    'latitude',
-                    Number(
-                      event.target.value
-                    )
-                  )
-                }
-              />
-            </div>
-
-            <div>
-              <label className="field-label">
-                Долгота
-              </label>
-
-              <input
-                type="number"
-                step="0.000001"
-                className="field-input"
-                value={form.longitude}
-                onChange={(event) =>
-                  update(
-                    'longitude',
-                    Number(
-                      event.target.value
-                    )
-                  )
-                }
-              />
-            </div>
-          </div>
         </div>
       )}
 
@@ -922,10 +907,7 @@ export function OrderWizard({
                   'today'
                 }
                 onClick={() =>
-                  update(
-                    'dateOption',
-                    'today'
-                  )
+                  selectDateOption('today')
                 }
               />
 
@@ -936,10 +918,7 @@ export function OrderWizard({
                   'tomorrow'
                 }
                 onClick={() =>
-                  update(
-                    'dateOption',
-                    'tomorrow'
-                  )
+                  selectDateOption('tomorrow')
                 }
               />
 
@@ -950,10 +929,7 @@ export function OrderWizard({
                   'custom'
                 }
                 onClick={() =>
-                  update(
-                    'dateOption',
-                    'custom'
-                  )
+                  selectDateOption('custom')
                 }
               />
             </div>
@@ -982,8 +958,14 @@ export function OrderWizard({
               Время доставки
             </p>
 
+            {availableTimeSlots.length === 0 && (
+              <p className="mb-3 text-sm text-navy-400">
+                На сегодня подходящих слотов уже нет — выберите «Завтра» или другую дату.
+              </p>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
-              {TIME_SLOTS.map(
+              {availableTimeSlots.map(
                 (time) => (
                   <SelectableCard
                     key={time}
@@ -1175,15 +1157,6 @@ export function OrderWizard({
             <SummaryRow
               label="Адрес"
               value={form.addressText}
-            />
-
-            <SummaryRow
-              label="Координаты"
-              value={`${form.latitude.toFixed(
-                6
-              )}, ${form.longitude.toFixed(
-                6
-              )}`}
             />
 
             <SummaryRow

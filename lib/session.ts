@@ -3,8 +3,24 @@ import { cookies } from 'next/headers';
 import type { Role } from '@prisma/client';
 
 const COOKIE_NAME = 'bsb_session';
-const SECRET = process.env.SESSION_SECRET || 'dev-only-insecure-secret-change-me';
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 дней
+
+// В проде обязательно нужен свой SESSION_SECRET: если его не задать, все
+// окружения будут подписывать сессионные cookie одним и тем же публично
+// известным значением из этого репозитория — а значит, любой сможет
+// подделать себе cookie администратора. В деве оставляем insecure-заглушку,
+// чтобы `npm run dev` без .env не падал.
+const SECRET =
+  process.env.SESSION_SECRET ||
+  (() => {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'SESSION_SECRET не задан в окружении продакшена — без него сессии небезопасны. ' +
+          'Сгенерируйте случайную строку (см. .env.example) и задайте её на сервере.',
+      );
+    }
+    return 'dev-only-insecure-secret-change-me';
+  })();
 
 export type SessionPayload = {
   userId: string;

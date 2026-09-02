@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendTelegramMessageToMany } from '@/lib/telegram';
+import { sendTelegramMessageToMany, siteUrl } from '@/lib/telegram';
 import { MATERIAL_LABELS } from '@/lib/utils';
 
 // Проверка "зависших" заказов — вызывается по расписанию извне (не Next.js,
@@ -62,7 +62,7 @@ async function handleCheck(req: NextRequest) {
         adminChatIds,
         `⏰ Заказ ${order.orderNumber} висит без завода уже ${minutesWaiting} мин.\n` +
           `${materialLabel}, ${order.quantity} м³, адрес: ${order.addressText}\n\n` +
-          `Назначить вручную: bsb-beton.ru/admin/orders`,
+          `Назначить вручную: ${siteUrl('/admin/orders')}`,
       );
     }
 

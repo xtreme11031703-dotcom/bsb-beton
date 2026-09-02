@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession, createSession } from '@/lib/session';
 import { hashPassword, verifyPassword } from '@/lib/auth';
 import { generateOrderNumber, distanceKm, MATERIAL_LABELS } from '@/lib/utils';
-import { sendTelegramMessageToMany } from '@/lib/telegram';
+import { sendTelegramMessageToMany, siteUrl } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
 const orderSchema = z.object({
@@ -180,7 +180,7 @@ async function notifyNewOrder(
   if (plantChatIds.length > 0) {
     await sendTelegramMessageToMany(
       plantChatIds,
-      `🆕 Новый заказ ${orderNumber}\n${summary}\n\nПосмотреть и взять: bsb-beton.ru/plant`,
+      `🆕 Новый заказ ${orderNumber}\n${summary}\n\nПосмотреть и взять: ${siteUrl('/plant')}`,
     );
   }
 
@@ -189,7 +189,7 @@ async function notifyNewOrder(
     const adminText =
       matchingPlantIds.length > 0
         ? `🆕 Новый заказ ${orderNumber}\n${summary}\nДоступен ${matchingPlantIds.length} завод(ам).`
-        : `⚠️ Заказ ${orderNumber} без подходящего завода\n${summary}\n\nНи один завод не подошёл автоматически (материал/радиус доставки) — нужно назначить вручную: bsb-beton.ru/admin/orders`;
+        : `⚠️ Заказ ${orderNumber} без подходящего завода\n${summary}\n\nНи один завод не подошёл автоматически (материал/радиус доставки) — нужно назначить вручную: ${siteUrl('/admin/orders')}`;
 
     await sendTelegramMessageToMany(adminChatIds, adminText);
   }

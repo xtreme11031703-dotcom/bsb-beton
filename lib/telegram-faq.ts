@@ -1,6 +1,7 @@
 // Базовый "консультант" бота: без ИИ и внешних вызовов — просто отвечает на
 // частые вопросы по ключевым словам, используя тот же контент, что и сайт.
 import { company } from './company';
+import { siteUrl } from './telegram';
 
 type Rule = { keywords: string[]; answer: () => string };
 
@@ -13,7 +14,7 @@ const rules: Rule[] = [
   {
     keywords: ['марка', 'марки', 'м100', 'м200', 'м300', 'м350', 'м400', 'м500', 'какой бетон'],
     answer: () =>
-      `Работаем с марками ${company.serviceCategories[0].grades?.join(', ')}, а также тощим, высокопрочным бетоном, полистиролбетоном и растворами. Подробнее: bsb-beton.ru/services`,
+      `Работаем с марками ${company.serviceCategories[0].grades?.join(', ')}, а также тощим, высокопрочным бетоном, полистиролбетоном и растворами. Подробнее: ${siteUrl('/services')}`,
   },
   {
     keywords: ['доставк', 'сколько ждать', 'сколько везти', 'время подачи'],
@@ -26,7 +27,7 @@ const rules: Rule[] = [
       `У нас ${company.branches.length} заводов и филиалов по Москве и области (${company.branches
         .slice(0, 3)
         .map((b) => b.name)
-        .join(', ')} и другие). Полный список: bsb-beton.ru/contacts`,
+        .join(', ')} и другие). Полный список: ${siteUrl('/contacts')}`,
   },
   {
     keywords: ['насос', 'бетононасос', 'автобетононасос'],
@@ -44,7 +45,7 @@ const rules: Rule[] = [
   },
 ];
 
-const FALLBACK = `Не совсем понял вопрос. Можно спросить про цены, марки бетона, доставку, насос или адреса заводов.\n\nОформить заказ: /order — либо на сайте bsb-beton.ru/order/new\nПозвонить: ${company.phone}`;
+const FALLBACK = `Не совсем понял вопрос. Можно спросить про цены, марки бетона, доставку, насос или адреса заводов.\n\nОформить заказ: /order — либо на сайте ${siteUrl('/order/new')}\nПозвонить: ${company.phone}`;
 
 /** Простой роутинг по ключевым словам без внешних зависимостей и без ИИ. */
 export function answerFaq(userText: string): string {

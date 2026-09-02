@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
-import { sendTelegramMessage } from '@/lib/telegram';
+import { sendTelegramMessage, siteUrl } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
 /** Заказы, доступные для завода текущего пользователя (роль PLANT), сгруппированные по статусу. */
@@ -112,7 +112,7 @@ async function notifyClientPlantAssigned(orderId: string, plantId: string) {
 
   await sendTelegramMessage(
     order.client.telegramChatId,
-    `🟢 Заказ ${order.orderNumber} — завод найден!\n\n${plant.name}, ${plant.phone}\n\nСледить за статусом: bsb-beton.ru/client/orders/${order.id}`,
+    `🟢 Заказ ${order.orderNumber} — завод найден!\n\n${plant.name}, ${plant.phone}\n\nСледить за статусом: ${siteUrl(`/client/orders/${order.id}`)}`,
   );
 }
 

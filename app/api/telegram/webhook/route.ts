@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendTelegramMessage, TELEGRAM_MINIAPP_URL } from '@/lib/telegram';
+import { sendTelegramMessage, siteUrl, TELEGRAM_MINIAPP_URL } from '@/lib/telegram';
 import { answerFaq } from '@/lib/telegram-faq';
 import { ORDER_STATUS_LABELS } from '@/lib/utils';
 
@@ -132,7 +132,7 @@ async function sendOrderStatusSummary(chatId: string) {
   });
 
   if (orders.length === 0) {
-    await sendTelegramMessage(chatId, 'У вас пока нет заказов. Оформить: bsb-beton.ru/order/new');
+    await sendTelegramMessage(chatId, `У вас пока нет заказов. Оформить: ${siteUrl('/order/new')}`);
     return;
   }
 
