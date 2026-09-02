@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { generateLinkCode, sendTelegramMessageToMany, siteUrl } from '@/lib/telegram';
 import { chatDisplayName } from '@/lib/chat';
-import { matchFaq } from '@/lib/faq-bot';
+import { matchFaq, FAQ_GREETING, QUICK_TOPICS } from '@/lib/faq-bot';
 import { revalidatePath } from 'next/cache';
 
 // Живой чат-виджет на сайте — доступен и гостям, и залогиненным. Личность
@@ -75,6 +75,12 @@ export async function getOrCreateThread(): Promise<ChatThreadDTO> {
         // завода или админ, зашедший на публичный сайт под своей учёткой, не
         // должен становиться "личностью" анонимного посетителя чата.
         clientId: session?.role === 'CLIENT' ? session.userId : null,
+        // Бот сразу здоровается новым сообщением (см. FAQ_GREETING) — это НЕ
+        // повод дёргать админа уведомлением "непрочитано", посетитель ещё
+        // ничего не спросил, поэтому adminUnread явно false (по умолчанию у
+        // модели — true, это про непрочитанный вопрос от человека).
+        adminUnread: false,
+        messages: { create: { sender: 'BOT', text: FAQ_GREETING } },
       },
       include: { messages: true },
     });
@@ -187,6 +193,37 @@ export async function sendVisitorMessage(threadId: string, text: string): Promis
   if (!botAnswerSaved) {
     await notifyAdminsNewChatMessage(thread.shortCode, chatDisplayName(thread), trimmed);
   }
+  return { ok: true };
+}
+
+/**
+ * Кнопка быстрого вопроса под приветствием бота (см. lib/faq-bot.ts ->
+ * QUICK_TOPICS) — в отличие от sendVisitorMessage, ответ тут не ищется через
+ * matchFaq (свободный текст мог бы не попасть в нужный корень/фразу), а
+ * берётся напрямую по id топика, поэтому кнопка гарантированно отвечает
+ * правильно. В тред добавляются оба сообщения — вопрос как бы "от посетителя"
+ * (чтобы в истории чата и у админа в /admin/chats выглядело как обычный
+ * диалог) и сразу ответ бота.
+ */
+export async function sendFaqQuickTopic(threadId: string, topicId: number): Promise<SendMessageResult> {
+  const topic = QUICK_TOPICS.find((t) => t.id === topicId);
+  if (!topic) return { ok: false, error: 'Вопрос не найден' };
+
+  const visitorKey = cookies().get(VISITOR_COOKIE)?.value;
+  if (!visitorKey) return { ok: false, error: 'Сессия чата не найдена, обновите страницу' };
+
+  const thread = await prisma.chatThread.findUnique({ where: { id: threadId } });
+  if (!thread || thread.visitorKey !== visitorKey) return { ok: false, error: 'Диалог не найден' };
+
+  await prisma.chatMessage.create({ data: { threadId, sender: 'VISITOR', text: topic.question } });
+  await prisma.chatMessage.create({ data: { threadId, sender: 'BOT', text: topic.answer } });
+
+  await prisma.chatThread.update({
+    where: { id: threadId },
+    data: { lastMessageAt: new Date(), status: 'OPEN', adminUnread: false, visitorUnread: true },
+  });
+
+  revalidatePath('/admin/chats');
   return { ok: true };
 }
 

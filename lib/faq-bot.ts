@@ -43,6 +43,11 @@ const TOPICS: FaqTopic[] = [
   {
     answer: company.faq[3].answer,
     roots: ['насос'],
+    // "бетононасосом"/"бетононасоса" не НАЧИНАЮТСЯ с корня "насос" (он в
+    // середине слова), поэтому проверка по корню (startsWith) их не ловит —
+    // здесь то же слово подключено как "фраза" (matchFaq ищет её через
+    // includes по всему тексту, а не по началу слова).
+    phrases: ['насос'],
   },
   {
     answer: company.faq[4].answer,
@@ -97,3 +102,34 @@ export function matchFaq(message: string): string | null {
 
   return best?.answer ?? null;
 }
+
+// Приветствие бота — первое сообщение в новом треде (см. getOrCreateThread в
+// app/actions/chat.ts), чтобы посетитель сразу видел, что тут кто-то
+// "ответит", а не тишина, и понимал, что можно нажать кнопку вместо того,
+// чтобы формулировать вопрос самому.
+export const FAQ_GREETING =
+  'Здравствуйте! Я бот-помощник БСБ 🤖 — отвечу сразу на частые вопросы. ' +
+  'Выберите вопрос ниже или напишите свой, а если не справлюсь — подключу менеджера.';
+
+export type QuickTopic = { id: number; label: string; question: string; answer: string };
+
+// Кнопки быстрых вопросов под приветствием бота в чате — по одной на каждый
+// пункт company.faq, с коротким лейблом для кнопки (сам полный вопрос всё
+// равно попадает в историю чата как будто его напечатал посетитель — так
+// админ в /admin/chats видит переписку так же, как обычную).
+const QUICK_TOPIC_LABELS = [
+  'Минимальный объём',
+  'Сроки доставки',
+  'Документы и ГОСТ',
+  'Бетононасос',
+  'Способы оплаты',
+  'Изменить/отменить заказ',
+  'Режим работы',
+];
+
+export const QUICK_TOPICS: QuickTopic[] = company.faq.map((item, i) => ({
+  id: i,
+  label: QUICK_TOPIC_LABELS[i] ?? item.question,
+  question: item.question,
+  answer: item.answer,
+}));

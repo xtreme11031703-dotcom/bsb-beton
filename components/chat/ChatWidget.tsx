@@ -7,8 +7,10 @@ import {
   markThreadReadByVisitor,
   pollThread,
   sendVisitorMessage,
+  sendFaqQuickTopic,
   type ChatMessageDTO,
 } from '@/app/actions/chat';
+import { QUICK_TOPICS } from '@/lib/faq-bot';
 
 // Живой чат-виджет — плавающая кнопка на всех страницах сайта (кроме
 // админки, кабинета завода и Mini App, там ему не место — сотрудник завода,
@@ -85,6 +87,27 @@ export function ChatWidget() {
     });
   }
 
+  function handleQuickTopic(topicId: number) {
+    if (!threadId) return;
+    const topic = QUICK_TOPICS.find((t) => t.id === topicId);
+    if (!topic) return;
+    setMessages((current) => [
+      ...current,
+      { id: `local-${Date.now()}`, sender: 'VISITOR', text: topic.question, createdAt: new Date().toISOString() },
+    ]);
+    startTransition(async () => {
+      await sendFaqQuickTopic(threadId, topicId);
+      const data = await pollThread(threadId);
+      if (data) setMessages(data.messages);
+    });
+  }
+
+  // Кнопки быстрых вопросов показываем только в самом начале диалога — пока
+  // есть только приветствие бота (или диалог ещё не загрузился). После
+  // первого сообщения (не важно, через кнопку или свободным текстом) дальше
+  // это обычный чат без кнопок, чтобы не загромождать переписку.
+  const showQuickTopics = messages.length <= 1;
+
   return (
     <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
       {open && (
@@ -125,6 +148,22 @@ export function ChatWidget() {
                 </div>
               </div>
             ))}
+
+            {showQuickTopics && threadId && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {QUICK_TOPICS.map((topic) => (
+                  <button
+                    key={topic.id}
+                    type="button"
+                    onClick={() => handleQuickTopic(topic.id)}
+                    disabled={isPending}
+                    className="rounded-full border border-accent-500/30 bg-accent-500/5 px-3 py-1.5 text-xs font-medium text-navy-700 transition-colors hover:bg-accent-500/10 disabled:opacity-50"
+                  >
+                    {topic.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 border-t border-surface-border p-3">
