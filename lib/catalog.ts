@@ -297,6 +297,46 @@ function findPumpSku(pumpType: PumpType | null | undefined, length: string | nul
   return list.find((s) => s.length === length) ?? null;
 }
 
+export type SkuSpecs = { classLabel?: string; frost?: string; water?: string; density?: number };
+
+/** Тех.характеристики (класс/морозостойкость/водонепроницаемость/плотность),
+ * которые подтягиваются автоматически по выбранной марке — те же цифры, что
+ * показаны в карточках каталога (см. BETON_SKUS/MORTAR_SKUS и т.п.), чтобы в
+ * заявке они не расходились с тем, что человек видел при выборе марки, и не
+ * вводились вручную (там, где для сочетания категория+марка(+наполнитель/вид
+ * раствора) характеристики неизвестны — например, марка ещё не выбрана —
+ * возвращает null). Подвижность и фибра сюда не входят — в прайсе с сайта их
+ * нет, это остаётся отдельным полем/чекбоксом, которые человек заполняет сам. */
+export function getSkuSpecs(item: {
+  category: ProductCategory;
+  aggregate?: ConcreteAggregate | null;
+  concreteGrade?: ConcreteGrade | null;
+  mortarKind?: MortarKind | null;
+}): SkuSpecs | null {
+  let sku: { classLabel?: string; frost?: string; water?: string; density?: number } | null | undefined;
+  switch (item.category) {
+    case 'BETON':
+      sku = findBetonSku(item.aggregate, item.concreteGrade);
+      break;
+    case 'TOSHCHIY_BETON':
+      sku = TOSHCHIY_BETON_SKUS.find((s) => s.grade === item.concreteGrade);
+      break;
+    case 'VYSOKOPROCHNYY_BETON':
+      sku = VYSOKOPROCHNYY_BETON_SKUS.find((s) => s.grade === item.concreteGrade);
+      break;
+    case 'POLISTIROLBETON':
+      sku = POLISTIROLBETON_SKUS.find((s) => s.grade === item.concreteGrade);
+      break;
+    case 'RASTVORY':
+      sku = findMortarSku(item.mortarKind, item.concreteGrade);
+      break;
+    default:
+      return null;
+  }
+  if (!sku) return null;
+  return { classLabel: sku.classLabel, frost: sku.frost, water: sku.water, density: sku.density };
+}
+
 type PriceLookupItem = {
   category: ProductCategory;
   aggregate?: ConcreteAggregate | null;

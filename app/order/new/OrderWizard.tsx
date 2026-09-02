@@ -28,6 +28,7 @@ import {
   getGradeOptions,
   getItemLineTotal,
   getItemUnitPrice,
+  getSkuSpecs,
   isCartItemValid,
   itemRequiresGrade,
   type CartItem,
@@ -179,7 +180,20 @@ export function OrderWizard({
       setError('Заполните обязательные поля позиции');
       return;
     }
-    addItem(draft);
+    // Класс/морозостойкость/водонепроницаемость подтягиваются автоматически
+    // по выбранной марке (см. lib/catalog.ts -> getSkuSpecs) — записываем их
+    // в позицию здесь же, чтобы они сохранились в заказе вместе с остальным,
+    // а не только отображались в форме на время выбора.
+    const specs = getSkuSpecs(draft);
+    const finalItem: CartItem = specs
+      ? {
+          ...draft,
+          concreteClass: specs.classLabel ?? draft.concreteClass,
+          frostResistance: specs.frost ?? draft.frostResistance,
+          waterResistance: specs.water ?? draft.waterResistance,
+        }
+      : draft;
+    addItem(finalItem);
     setDraft(null);
     setError(null);
     setStepIdx(STEPS.indexOf('cart'));
@@ -349,6 +363,7 @@ export function OrderWizard({
   const draftGradeOptions = draft ? getGradeOptions(draft) : [];
   const draftUnitPrice = draft ? getItemUnitPrice(draft) : null;
   const draftLineTotal = draft ? getItemLineTotal(draft) : null;
+  const draftSpecs = draft ? getSkuSpecs(draft) : null;
 
   return (
     <StepShell
@@ -480,41 +495,46 @@ export function OrderWizard({
 
           {categoryUsesConcreteSpecs(draft.category) && (
             <div className="space-y-4 rounded-xl border border-surface-border p-4">
-              <p className="text-sm text-navy-400">Дополнительные характеристики — можно пропустить.</p>
+              {draftSpecs ? (
+                <div>
+                  <p className="text-sm text-navy-400">Характеристики — подтянуты автоматически по выбранной марке.</p>
+                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    {draftSpecs.classLabel && (
+                      <>
+                        <dt className="text-navy-400">Класс</dt>
+                        <dd className="font-medium text-navy-800">{draftSpecs.classLabel}</dd>
+                      </>
+                    )}
+                    {draftSpecs.frost && (
+                      <>
+                        <dt className="text-navy-400">Морозостойкость</dt>
+                        <dd className="font-medium text-navy-800">{draftSpecs.frost}</dd>
+                      </>
+                    )}
+                    {draftSpecs.water && (
+                      <>
+                        <dt className="text-navy-400">Водонепроницаемость</dt>
+                        <dd className="font-medium text-navy-800">{draftSpecs.water}</dd>
+                      </>
+                    )}
+                    {draftSpecs.density != null && (
+                      <>
+                        <dt className="text-navy-400">Плотность</dt>
+                        <dd className="font-medium text-navy-800">{draftSpecs.density} кг/м³</dd>
+                      </>
+                    )}
+                  </dl>
+                </div>
+              ) : (
+                <p className="text-sm text-navy-400">Выберите марку — класс, морозостойкость и водонепроницаемость подтянутся автоматически.</p>
+              )}
               <div>
-                <label className="field-label">Класс бетона</label>
-                <input
-                  className="field-input"
-                  value={draft.concreteClass}
-                  onChange={(event) => updateDraft('concreteClass', event.target.value)}
-                  placeholder="например, B22.5"
-                />
-              </div>
-              <div>
-                <label className="field-label">Подвижность</label>
+                <label className="field-label">Подвижность (по желанию)</label>
                 <input
                   className="field-input"
                   value={draft.mobility}
                   onChange={(event) => updateDraft('mobility', event.target.value)}
                   placeholder="например, П3"
-                />
-              </div>
-              <div>
-                <label className="field-label">Морозостойкость</label>
-                <input
-                  className="field-input"
-                  value={draft.frostResistance}
-                  onChange={(event) => updateDraft('frostResistance', event.target.value)}
-                  placeholder="например, F150"
-                />
-              </div>
-              <div>
-                <label className="field-label">Водонепроницаемость</label>
-                <input
-                  className="field-input"
-                  value={draft.waterResistance}
-                  onChange={(event) => updateDraft('waterResistance', event.target.value)}
-                  placeholder="например, W6"
                 />
               </div>
               <label className="flex items-center gap-2 text-sm text-navy-700">
