@@ -22,24 +22,33 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-xl bg-accent-500 px-6 py-3.5 text-base font-semibold text-navy-900 transition-colors hover:bg-accent-400 active:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-2xl bg-gradient-to-b from-accent-400 to-accent-500 px-6 py-3.5 text-base font-semibold text-navy-900 shadow-soft transition-all duration-200 hover:shadow-glow hover:brightness-105 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-xl border border-navy-700 bg-transparent px-6 py-3.5 text-base font-semibold text-navy-700 transition-colors hover:bg-navy-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-2xl border border-navy-700 bg-transparent px-6 py-3.5 text-base font-semibold text-navy-700 transition-all duration-200 hover:bg-navy-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium text-navy-500 transition-colors hover:bg-surface-border;
   }
   .card {
-    @apply rounded-xl border border-surface-border bg-white p-5 shadow-card;
+    @apply rounded-2xl border border-surface-border bg-white p-5 shadow-soft transition-shadow duration-200;
+  }
+  .card-hover {
+    @apply hover:-translate-y-1 hover:shadow-lift;
   }
   .field-label {
     @apply mb-1.5 block text-sm font-medium text-navy-600;
   }
   .field-input {
-    @apply w-full rounded-xl border border-surface-border bg-white px-4 py-3 text-base text-navy-800 placeholder:text-navy-300 focus:border-navy-500 focus:outline-none;
+    @apply w-full rounded-xl border border-surface-border bg-white px-4 py-3 text-base text-navy-800 placeholder:text-navy-300 transition-colors focus:border-navy-500 focus:outline-none;
   }
   .field-error {
     @apply mt-1 text-sm text-red-600;
+  }
+  .gradient-text {
+    @apply bg-gradient-to-r from-white via-accent-200 to-white bg-[length:200%_auto] bg-clip-text text-transparent;
+  }
+  .eyebrow {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-navy-100;
   }
 }

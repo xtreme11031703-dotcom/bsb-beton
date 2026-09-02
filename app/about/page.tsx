@@ -69,13 +69,23 @@ export default function AboutPage() {
           </Reveal>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {company.certificates.map((cert) => (
-              <div key={cert.title} className="card">
-                <h3 className="font-semibold text-navy-700">{cert.title}</h3>
-                <p className="mt-1.5 text-sm text-navy-500">{cert.note}</p>
-              </div>
+            {company.certificates.map((cert, i) => (
+              <Reveal key={cert.title} delayMs={i * 100}>
+                <div className="card h-full">
+                  <h3 className="font-semibold text-navy-700">{cert.title}</h3>
+                  <p className="mt-1.5 text-sm text-navy-500">№ {cert.number}</p>
+                  <p className="mt-1 text-sm text-navy-500">{cert.standard}</p>
+                  <p className="mt-1 text-xs text-navy-400">Действует {cert.validity}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
+
+          <Reveal delayMs={220}>
+            <Link href="/sertifikaty" className="btn-secondary mt-6 inline-flex">
+              Смотреть сканы документов →
+            </Link>
+          </Reveal>
         </section>
 
         <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">

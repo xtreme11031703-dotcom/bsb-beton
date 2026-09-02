@@ -10,6 +10,7 @@ const benefits = [
   {
     title: 'Быстрая подача заявки',
     text: 'Оформление заказа занимает пару минут — без звонков и лишних форм.',
+    big: true,
   },
   {
     title: 'Доставка по Москве и МО',
@@ -31,68 +32,91 @@ export default function HomePage() {
       <SiteHeader />
 
       <main>
-        <section className="relative overflow-hidden border-b border-surface-border bg-navy-700">
+        {/* HERO */}
+        <section className="relative overflow-hidden bg-navy-900">
+          <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-60" />
           <div
             aria-hidden
-            className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-accent-500/20 blur-3xl"
+            className="pointer-events-none absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-accent-500/20 blur-[100px]"
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute -bottom-32 left-1/3 h-80 w-80 rounded-full bg-navy-400/20 blur-3xl"
+            className="pointer-events-none absolute -bottom-40 left-0 h-[26rem] w-[26rem] rounded-full bg-navy-400/25 blur-[100px]"
           />
 
-          <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-24">
+          <div className="relative mx-auto max-w-6xl px-4 pb-28 pt-16 sm:px-6 sm:pt-24">
             <Reveal>
-              <h1 className="max-w-2xl text-3xl font-bold leading-tight text-white sm:text-5xl">
-                Бетон с доставкой по Москве и Московской области
+              <span className="eyebrow">🕐 Работаем ежедневно, {company.workHours.split(', ')[1] ?? '6:00–22:00'}</span>
+            </Reveal>
+
+            <Reveal delayMs={80}>
+              <h1 className="mt-6 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tightest text-white sm:text-6xl">
+                Бетон с доставкой{' '}
+                <span className="gradient-text animate-gradient-x">по Москве и области</span>
               </h1>
             </Reveal>
 
-            <Reveal delayMs={100}>
-              <p className="mt-4 max-w-xl text-lg text-navy-100">
-                Рассчитайте заказ и оформите доставку за несколько минут
+            <Reveal delayMs={160}>
+              <p className="mt-5 max-w-xl text-lg text-navy-200">
+                Рассчитайте заказ и оформите доставку за несколько минут — материал, марка, объём
+                и адрес в одной форме.
               </p>
             </Reveal>
 
-            <Reveal delayMs={200}>
-              <div className="mt-8 flex flex-wrap gap-3">
+            <Reveal delayMs={240}>
+              <div className="mt-9 flex flex-wrap gap-3">
                 <Link href="/order/new" className="btn-primary">
                   Заказать бетон
                 </Link>
-
                 <Link
                   href="/about"
-                  className="inline-flex items-center justify-center rounded-xl border border-navy-400 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-navy-600"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/10"
                 >
                   О компании
                 </Link>
               </div>
             </Reveal>
           </div>
-        </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-            {company.stats.map((stat, i) => (
-              <Reveal key={stat.label} delayMs={i * 70}>
-                <div className="text-center">
-                  <div className="text-2xl font-extrabold text-navy-700 sm:text-3xl">
-                    <CountUp value={stat.value} suffix={stat.suffix} />
+          {/* Плавающая статистика — перекрывает низ hero */}
+          <Reveal delayMs={320}>
+            <div className="relative mx-auto -mb-16 max-w-5xl px-4 sm:px-6">
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-surface-border bg-surface-border shadow-lift sm:grid-cols-3 lg:grid-cols-6">
+                {company.stats.map((stat) => (
+                  <div key={stat.label} className="bg-white px-4 py-6 text-center">
+                    <div className="text-2xl font-extrabold text-navy-800 sm:text-3xl">
+                      <CountUp value={stat.value} suffix={stat.suffix} />
+                    </div>
+                    <div className="mt-1 text-[11px] leading-tight text-navy-500 sm:text-xs">{stat.label}</div>
                   </div>
-                  <div className="mt-1 text-xs text-navy-500">{stat.label}</div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* BENTO-СЕТКА ПРЕИМУЩЕСТВ */}
+        <section className="mx-auto max-w-6xl px-4 pb-16 pt-28 sm:px-6 sm:pt-32">
+          <Reveal>
+            <h2 className="max-w-md text-2xl font-bold tracking-tight text-navy-800 sm:text-3xl">
+              Всё для быстрой доставки бетона
+            </h2>
+          </Reveal>
+
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {benefits.map((b, i) => (
-              <Reveal key={b.title} delayMs={i * 90}>
-                <div className="card h-full transition-transform hover:-translate-y-1 hover:shadow-lg">
-                  <h3 className="font-semibold text-navy-700">{b.title}</h3>
-                  <p className="mt-1.5 text-sm text-navy-500">{b.text}</p>
+              <Reveal
+                key={b.title}
+                delayMs={i * 90}
+                className={b.big ? 'sm:col-span-2 lg:col-span-2 lg:row-span-1' : ''}
+              >
+                <div
+                  className={`card card-hover h-full ${
+                    b.big ? 'bg-navy-800 text-white' : ''
+                  }`}
+                >
+                  <h3 className={`font-semibold ${b.big ? 'text-white' : 'text-navy-700'}`}>{b.title}</h3>
+                  <p className={`mt-1.5 text-sm ${b.big ? 'text-navy-200' : 'text-navy-500'}`}>{b.text}</p>
                 </div>
               </Reveal>
             ))}
@@ -103,7 +127,7 @@ export default function HomePage() {
         <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
           <Reveal>
             <div className="mb-5">
-              <h2 className="text-2xl font-bold text-navy-700">
+              <h2 className="text-2xl font-bold tracking-tight text-navy-800">
                 Работаем по Москве и Московской области
               </h2>
 
@@ -115,28 +139,33 @@ export default function HomePage() {
           </Reveal>
 
           <Reveal delayMs={100}>
-            <div className="overflow-hidden rounded-2xl border border-surface-border shadow-sm">
+            <div className="overflow-hidden rounded-3xl border border-surface-border shadow-soft">
               <YandexMap />
             </div>
           </Reveal>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
           <Reveal>
-            <div className="card flex flex-col items-start justify-between gap-4 bg-navy-800 sm:flex-row sm:items-center">
-              <div>
-                <h2 className="text-xl font-semibold text-white">
-                  Готовы оформить заказ?
-                </h2>
-
-                <p className="mt-1 text-sm text-navy-200">
-                  Укажите материал, объём и адрес — мы найдём подходящий завод.
-                </p>
+            <div className="relative overflow-hidden rounded-3xl bg-navy-900 p-8 sm:p-10">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-accent-500/25 blur-3xl"
+              />
+              <div className="relative flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+                <div>
+                  <h2 className="text-xl font-semibold text-white sm:text-2xl">
+                    Готовы оформить заказ?
+                  </h2>
+                  <p className="mt-1.5 max-w-md text-sm text-navy-200">
+                    Укажите материал, объём и адрес — мы найдём подходящий завод и пришлём
+                    уведомление, как только он подтвердит заказ.
+                  </p>
+                </div>
+                <Link href="/order/new" className="btn-primary shrink-0">
+                  Заказать бетон
+                </Link>
               </div>
-
-              <Link href="/order/new" className="btn-primary shrink-0">
-                Заказать бетон
-              </Link>
             </div>
           </Reveal>
         </section>

@@ -2,6 +2,13 @@ import Link from 'next/link';
 import { Logo } from './Logo';
 import { company } from '@/lib/company';
 
+type CompanyNavItem = (typeof company)['nav'][number];
+
+const footerLinks: { href: string; label: string }[] = (company.nav as readonly CompanyNavItem[]).flatMap(
+  (item): { href: string; label: string }[] =>
+    'href' in item ? [{ href: item.href, label: item.label }] : item.children.map((c) => ({ href: c.href, label: c.label }))
+);
+
 export function Footer() {
   return (
     <footer className="border-t border-surface-border bg-surface-muted">
@@ -14,7 +21,7 @@ export function Footer() {
         <div>
           <h3 className="text-sm font-semibold text-navy-700">Разделы</h3>
           <ul className="mt-3 space-y-2">
-            {company.nav.map((item) => (
+            {footerLinks.map((item) => (
               <li key={item.href}>
                 <Link href={item.href} className="text-sm text-navy-500 hover:text-navy-800">
                   {item.label}

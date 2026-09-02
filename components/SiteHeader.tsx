@@ -16,11 +16,39 @@ export async function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">
-          {company.nav.map((item) => (
-            <Link key={item.href} href={item.href} className="btn-ghost">
-              {item.label}
-            </Link>
-          ))}
+          {company.nav.map((item) =>
+            'href' in item ? (
+              <Link key={item.href} href={item.href} className="btn-ghost">
+                {item.label}
+              </Link>
+            ) : (
+              <div key={item.label} className="group relative">
+                <button type="button" className="btn-ghost inline-flex items-center gap-1">
+                  {item.label}
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    className="mt-px transition-transform duration-150 group-hover:rotate-180"
+                  >
+                    <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <div className="invisible absolute left-0 top-full z-40 w-64 rounded-2xl border border-surface-border bg-white p-2 opacity-0 shadow-lift transition-all duration-150 group-hover:visible group-hover:opacity-100">
+                  {item.children.map((child) => (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      className="block rounded-xl px-3 py-2.5 text-sm font-medium text-navy-600 transition-colors hover:bg-surface-muted hover:text-navy-900"
+                    >
+                      {child.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
