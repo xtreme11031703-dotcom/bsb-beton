@@ -9,13 +9,18 @@
 // адрес не стыкуется" — метод либо ничего не находил, либо находил не то.
 //
 // HTTP Geocoder API — официальный, документированный способ превратить текст
-// адреса в координаты и обратно. Он отдельный продукт от JS API карты: ключ,
-// выпущенный только под "JavaScript API", может не иметь доступа к нему
-// (Яндекс в этом случае отвечает 403) — см. throwOn403 ниже. Нужно, чтобы в
-// кабинете разработчика Яндекса (developer.tech.yandex.ru) у ключа был
-// подключён продукт "HTTP Геокодер" (можно тот же ключ, если оформлен как
-// "JavaScript API и HTTP Геокодер", либо отдельный ключ — тогда укажите его
-// в YANDEX_GEOCODER_API_KEY).
+// адреса в координаты и обратно. Это отдельный продукт от JS API карты: ключу
+// нужен подключённый продукт "API Геокодера" в кабинете разработчика
+// (developer.tech.yandex.ru) — можно тот же ключ, что и для карты, либо
+// отдельный (тогда укажите его в YANDEX_GEOCODER_API_KEY). На практике 403
+// "Invalid api key" здесь бывает по двум разным причинам, которые выглядят
+// одинаково снаружи:
+//   1) продукту "API Геокодера" у ключа правда не хватает прав;
+//   2) ключ выпущен через текущий кабинет (продукт "API Геокодера" в общем
+//      каталоге с чекбоксами), а запрос идёт на устаревший путь /1.x/ —
+//      актуальный путь /v1/ (см. ниже и request.html в доках Яндекса).
+// Если снова увидите "Invalid api key" при рабочем ключе — сначала проверьте
+// версию пути в URL, а не права ключа.
 const GEOCODER_API_KEY = process.env.YANDEX_GEOCODER_API_KEY || process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY;
 
 export type GeocodeResult = {
@@ -36,7 +41,7 @@ async function callGeocoder(geocodeParam: string, revalidateSeconds?: number): P
     );
   }
 
-  const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${encodeURIComponent(GEOCODER_API_KEY)}&geocode=${encodeURIComponent(geocodeParam)}&format=json&lang=ru_RU&results=1`;
+  const url = `https://geocode-maps.yandex.ru/v1/?apikey=${encodeURIComponent(GEOCODER_API_KEY)}&geocode=${encodeURIComponent(geocodeParam)}&format=json&lang=ru_RU&results=1`;
 
   // Адрес, который набирает пользователь при оформлении заказа, должен
   // геокодиться всегда заново (no-store). А вот статические адреса вроде
@@ -50,7 +55,7 @@ async function callGeocoder(geocodeParam: string, revalidateSeconds?: number): P
 
   if (response.status === 403) {
     throw new Error(
-      'Яндекс отклонил запрос к Геокодеру (403) — у API-ключа не подключён продукт "HTTP Геокодер" в кабинете разработчика Яндекса (developer.tech.yandex.ru). Ключ только для JS-карты для этого не подходит.',
+      'Яндекс отклонил запрос к Геокодеру (403, обычно "Invalid api key"). Проверьте по порядку: 1) у ключа в кабинете разработчика подключён продукт "API Геокодера"; 2) в настройках ключа нет ограничения по HTTP Referer, блокирующего серверные запросы (такое ограничение — только для браузерных JS-запросов); 3) запрос идёт на актуальный путь geocode-maps.yandex.ru/v1/, а не устаревший /1.x/.',
     );
   }
 
