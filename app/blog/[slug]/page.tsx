@@ -1,29 +1,41 @@
+import { cache } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import { company } from '@/lib/company';
-import { blogPosts, getBlogPost } from '@/lib/blog-posts';
+import { prisma } from '@/lib/prisma';
+import { renderMarkdown } from '@/lib/markdown';
 
-export function generateStaticParams() {
-  return blogPosts.map((post) => ({ slug: post.slug }));
-}
+export const dynamic = 'force-dynamic';
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
-  const post = getBlogPost(params.slug);
-  if (!post) return { title: `Блог — ${company.fullName}` };
+// cache() дедуплицирует запрос между generateMetadata и самим компонентом
+// страницы — оба вызываются для одного и того же рендера.
+const getPostBySlug = cache(async (slug: string) => {
+  return prisma.blogPost.findUnique({ where: { slug } });
+});
+
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const post = await getPostBySlug(params.slug);
+  if (!post || !post.published) return { title: `Блог — ${company.fullName}` };
   return {
     title: `${post.title} — ${company.fullName}`,
     description: post.excerpt,
   };
 }
 
-export default function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = getBlogPost(params.slug);
-  if (!post) notFound();
+export default async function BlogPostPage({ params }: { params: { slug: string } }) {
+  const post = await getPostBySlug(params.slug);
+  if (!post || !post.published) notFound();
 
-  const otherPosts = blogPosts.filter((p) => p.slug !== post.slug).slice(0, 3);
+  const otherPosts = await prisma.blogPost.findMany({
+    where: { published: true, slug: { not: post.slug } },
+    orderBy: { publishedAt: 'desc' },
+    take: 3,
+  });
+
+  const contentHtml = renderMarkdown(post.content);
 
   return (
     <div className="min-h-screen">
@@ -37,7 +49,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
                 ← Все статьи
               </Link>
               <time className="mt-4 block text-sm text-navy-300">
-                {new Date(post.date).toLocaleDateString('ru-RU', {
+                {post.publishedAt.toLocaleDateString('ru-RU', {
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric',
@@ -52,22 +64,9 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         </section>
 
         <article className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
-          {post.sections.map((section, i) => (
-            <Reveal key={i} delayMs={i * 60}>
-              <div className="mb-8">
-                {section.heading && (
-                  <h2 className="mb-3 text-xl font-bold text-navy-800">{section.heading}</h2>
-                )}
-                <div className="space-y-3">
-                  {section.paragraphs.map((p, j) => (
-                    <p key={j} className="text-base leading-relaxed text-navy-600">
-                      {p}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-          ))}
+          <Reveal>
+            <div className="blog-content" dangerouslySetInnerHTML={{ __html: contentHtml }} />
+          </Reveal>
 
           <Reveal>
             <div className="card mt-10 flex flex-col items-start justify-between gap-4 bg-navy-800 sm:flex-row sm:items-center">

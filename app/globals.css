@@ -51,4 +51,31 @@ body {
   .eyebrow {
     @apply inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-navy-100;
   }
+
+  /* Статья блога рендерится из markdown в сырой HTML (lib/markdown.ts) через
+     dangerouslySetInnerHTML — обычные классы Tailwind на JSX-элементы тут не
+     навесить, поэтому стили для получившихся тегов заданы через вложенный
+     селектор на общий класс-обёртку. Повторяет типографику, которая раньше
+     была на инлайн-классах в app/blog/[slug]/page.tsx (BlogSection[]). */
+  .blog-content {
+    @apply space-y-4;
+  }
+  .blog-content h2 {
+    @apply mb-2 mt-8 text-xl font-bold text-navy-800 first:mt-0;
+  }
+  .blog-content h3 {
+    @apply mb-2 mt-6 text-lg font-semibold text-navy-800;
+  }
+  .blog-content p {
+    @apply text-base leading-relaxed text-navy-600;
+  }
+  .blog-content ul {
+    @apply list-disc space-y-1.5 pl-5 text-base leading-relaxed text-navy-600;
+  }
+  .blog-content a {
+    @apply text-accent-600 underline underline-offset-2;
+  }
+  .blog-content strong {
+    @apply font-semibold text-navy-800;
+  }
 }
