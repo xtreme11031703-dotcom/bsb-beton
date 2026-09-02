@@ -108,13 +108,21 @@ export function ChatWidget() {
               </p>
             )}
             {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
-                  m.sender === 'VISITOR' ? 'ml-auto bg-accent-500 text-white' : 'bg-surface-muted text-navy-800'
-                }`}
-              >
-                {m.text}
+              <div key={m.id} className={m.sender === 'VISITOR' ? 'ml-auto max-w-[85%]' : 'max-w-[85%]'}>
+                {m.sender === 'BOT' && (
+                  <p className="mb-0.5 px-1 text-[11px] font-medium text-navy-400">Бот-помощник</p>
+                )}
+                <div
+                  className={`whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
+                    m.sender === 'VISITOR'
+                      ? 'bg-accent-500 text-white'
+                      : m.sender === 'BOT'
+                        ? 'border border-accent-500/20 bg-accent-500/5 text-navy-800'
+                        : 'bg-surface-muted text-navy-800'
+                  }`}
+                >
+                  {m.text}
+                </div>
               </div>
             ))}
           </div>

@@ -43,13 +43,21 @@ export default async function AdminChatDetailPage({ params }: { params: { id: st
         <div className="mt-4 max-h-[28rem] space-y-2 overflow-y-auto">
           {thread.messages.length === 0 && <p className="text-sm text-navy-400">Сообщений пока нет.</p>}
           {thread.messages.map((m) => (
-            <div
-              key={m.id}
-              className={`max-w-[75%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
-                m.sender === 'ADMIN' ? 'ml-auto bg-navy-800 text-white' : 'bg-surface-muted text-navy-800'
-              }`}
-            >
-              {m.text}
+            <div key={m.id} className={m.sender === 'ADMIN' ? 'ml-auto max-w-[75%]' : 'max-w-[75%]'}>
+              {m.sender === 'BOT' && (
+                <p className="mb-0.5 px-1 text-[11px] font-medium text-navy-400">Бот-помощник ответил автоматически</p>
+              )}
+              <div
+                className={`whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
+                  m.sender === 'ADMIN'
+                    ? 'bg-navy-800 text-white'
+                    : m.sender === 'BOT'
+                      ? 'border border-accent-500/20 bg-accent-500/5 text-navy-800'
+                      : 'bg-surface-muted text-navy-800'
+                }`}
+              >
+                {m.text}
+              </div>
             </div>
           ))}
         </div>

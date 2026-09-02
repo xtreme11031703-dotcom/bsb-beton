@@ -74,6 +74,9 @@ enum ChatThreadStatus {
 enum ChatSender {
   VISITOR
   ADMIN
+  // Автоматический ответ бота по FAQ (lib/faq-bot.ts) — до того, как в
+  // диалог включится человек.
+  BOT
 }
 
 model User {

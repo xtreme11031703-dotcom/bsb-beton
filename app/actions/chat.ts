@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { generateLinkCode, sendTelegramMessageToMany, siteUrl } from '@/lib/telegram';
 import { chatDisplayName } from '@/lib/chat';
+import { matchFaq } from '@/lib/faq-bot';
 import { revalidatePath } from 'next/cache';
 
 // Живой чат-виджет на сайте — доступен и гостям, и залогиненным. Личность
@@ -17,7 +18,7 @@ const MAX_MESSAGE_LENGTH = 2000;
 
 export type ChatMessageDTO = {
   id: string;
-  sender: 'VISITOR' | 'ADMIN';
+  sender: 'VISITOR' | 'ADMIN' | 'BOT';
   text: string;
   createdAt: string;
 };
@@ -33,7 +34,7 @@ type RawMessage = { id: string; sender: string; text: string; createdAt: Date };
 function toMessageDTOs(messages: RawMessage[]): ChatMessageDTO[] {
   return messages.map((m) => ({
     id: m.id,
-    sender: m.sender === 'ADMIN' ? 'ADMIN' : 'VISITOR',
+    sender: m.sender === 'ADMIN' || m.sender === 'BOT' ? (m.sender as 'ADMIN' | 'BOT') : 'VISITOR',
     text: m.text,
     createdAt: m.createdAt.toISOString(),
   }));
@@ -147,16 +148,32 @@ export async function sendVisitorMessage(threadId: string, text: string): Promis
   });
   if (!thread || thread.visitorKey !== visitorKey) return { ok: false, error: 'Диалог не найден' };
 
+  // Сначала пробуем ответить ботом по FAQ — если уверенного совпадения нет,
+  // matchFaq вернёт null и дальше всё идёт как раньше (уходит человеку).
+  const botAnswer = matchFaq(trimmed);
+
   await prisma.$transaction([
     prisma.chatMessage.create({ data: { threadId, sender: 'VISITOR', text: trimmed } }),
+    ...(botAnswer ? [prisma.chatMessage.create({ data: { threadId, sender: 'BOT', text: botAnswer } })] : []),
     prisma.chatThread.update({
       where: { id: threadId },
-      data: { lastMessageAt: new Date(), adminUnread: true, status: 'OPEN' },
+      data: {
+        lastMessageAt: new Date(),
+        status: 'OPEN',
+        // Бот ответил сам — не дёргаем администратора уведомлением (админ
+        // всё равно увидит диалог целиком в /admin/chats). Если посетитель
+        // после ответа бота напишет ещё раз и бот не поймёт — это уже
+        // обычное сообщение, adminUnread снова станет true.
+        adminUnread: !botAnswer,
+        visitorUnread: !!botAnswer,
+      },
     }),
   ]);
 
   revalidatePath('/admin/chats');
-  await notifyAdminsNewChatMessage(thread.shortCode, chatDisplayName(thread), trimmed);
+  if (!botAnswer) {
+    await notifyAdminsNewChatMessage(thread.shortCode, chatDisplayName(thread), trimmed);
+  }
   return { ok: true };
 }
 
