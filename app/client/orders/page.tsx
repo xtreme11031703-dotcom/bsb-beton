@@ -4,7 +4,7 @@ import { getClientOrders } from '@/app/actions/orders';
 import { getTelegramStatus } from '@/app/actions/telegram';
 import { TelegramLinkCard } from '@/components/TelegramLinkCard';
 import { StatusBadge } from '@/components/StatusBadge';
-import { MATERIAL_LABELS } from '@/lib/utils';
+import { summarizeOrderItems } from '@/lib/catalog';
 
 export default async function ClientOrdersPage() {
   const [orders, telegramStatus] = await Promise.all([getClientOrders(), getTelegramStatus()]);
@@ -48,10 +48,7 @@ export default async function ClientOrdersPage() {
                   <span className="font-semibold text-navy-800">{order.orderNumber}</span>
                   <StatusBadge status={order.status} />
                 </div>
-                <p className="mt-1.5 text-sm text-navy-500">
-                  {MATERIAL_LABELS[order.materialType]}
-                  {order.concreteGrade ? ` • ${order.concreteGrade}` : ''} • {order.quantity} м³
-                </p>
+                <p className="mt-1.5 text-sm text-navy-500">{summarizeOrderItems(order.items)}</p>
                 <p className="mt-1 text-sm text-navy-400">{order.addressText}</p>
               </Link>
             ))}

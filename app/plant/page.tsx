@@ -2,7 +2,7 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { getPlantOrders } from '@/app/actions/plants';
 import { getTelegramStatus } from '@/app/actions/telegram';
 import { TelegramLinkCard } from '@/components/TelegramLinkCard';
-import { MATERIAL_LABELS, PUMP_TYPE_LABELS } from '@/lib/utils';
+import { summarizeOrderItems } from '@/lib/catalog';
 import { StatusBadge } from '@/components/StatusBadge';
 import { TakeOrderButton } from './TakeOrderButton';
 import { PlantOrdersPoller } from './PlantOrdersPoller';
@@ -54,21 +54,12 @@ export default async function PlantDashboardPage() {
                     <span className="font-semibold text-navy-800">{order.orderNumber}</span>
                     <span className="text-xs text-navy-400">{distanceKm ?? '—'} км</span>
                   </div>
-                  <p className="mt-1 text-sm text-navy-600">
-                    {MATERIAL_LABELS[order.materialType]}
-                    {order.concreteGrade ? ` ${order.concreteGrade}` : ''} • {order.quantity} м³
-                  </p>
+                  <p className="mt-1 text-sm text-navy-600">{summarizeOrderItems(order.items)}</p>
                   <p className="mt-1 text-sm text-navy-400">{order.addressText}</p>
                   <p className="mt-1 text-sm text-navy-400">
                     {new Date(order.deliveryDate).toLocaleDateString('ru-RU')}, {order.deliveryTimeFrom}–
                     {order.deliveryTimeTo}
                   </p>
-                  {order.pumpRequired && (
-                    <p className="mt-1 text-sm text-navy-400">
-                      Насос: {PUMP_TYPE_LABELS[order.pumpType ?? 'AUTO']}
-                      {order.pumpLength ? ` ${order.pumpLength}` : ''}
-                    </p>
-                  )}
                   <TakeOrderButton orderId={order.id} />
                 </div>
               ))}
@@ -90,21 +81,12 @@ export default async function PlantDashboardPage() {
                     <span className="font-semibold text-navy-800">{order.orderNumber}</span>
                     <StatusBadge status={order.status} />
                   </div>
-                  <p className="mt-1.5 text-sm text-navy-600">
-                    {MATERIAL_LABELS[order.materialType]}
-                    {order.concreteGrade ? ` ${order.concreteGrade}` : ''} • {order.quantity} м³
-                  </p>
+                  <p className="mt-1.5 text-sm text-navy-600">{summarizeOrderItems(order.items)}</p>
                   <p className="mt-1 text-sm font-medium text-navy-700">{order.addressText}</p>
                   <p className="mt-1 text-sm text-navy-400">
                     {new Date(order.deliveryDate).toLocaleDateString('ru-RU')}, {order.deliveryTimeFrom}–
                     {order.deliveryTimeTo}
                   </p>
-                  {order.pumpRequired && (
-                    <p className="mt-1 text-sm text-navy-400">
-                      Насос: {PUMP_TYPE_LABELS[order.pumpType ?? 'AUTO']}
-                      {order.pumpLength ? ` ${order.pumpLength}` : ''}
-                    </p>
-                  )}
                   {order.comment && <p className="mt-1 text-sm text-navy-400">Комментарий: {order.comment}</p>}
                 </div>
               ))}

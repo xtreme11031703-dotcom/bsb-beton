@@ -28,7 +28,17 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const DEFAULT_PHONE = '+7 495 085-66-06';
-const DEFAULT_MATERIALS = ['CONCRETE', 'SAND', 'GRAVEL', 'CEMENT', 'MORTAR'] as const;
+// Полный набор категорий каталога — по умолчанию считаем, что новый завод
+// умеет всё (см. Plant.categories в schema.prisma); при необходимости
+// сузить список — это делается потом в самой админке.
+const DEFAULT_CATEGORIES = [
+  'BETON',
+  'TOSHCHIY_BETON',
+  'VYSOKOPROCHNYY_BETON',
+  'POLISTIROLBETON',
+  'RASTVORY',
+  'NASOS',
+] as const;
 
 const REAL_PLANTS = [
   // Одновременно офис и действующий завод.
@@ -88,7 +98,7 @@ async function main() {
         phone: DEFAULT_PHONE,
         status: 'ACTIVE',
         radiusKm: 50,
-        materials: [...DEFAULT_MATERIALS],
+        categories: [...DEFAULT_CATEGORIES],
       },
     });
     console.log(`Создан: ${plant.name} → /admin/plants/${plant.id}`);

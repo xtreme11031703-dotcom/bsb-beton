@@ -33,16 +33,7 @@ export const ORDER_STATUS_LABELS: Record<string, { label: string; emoji: string;
   CANCELLED: { label: 'Отменён', emoji: '⚫', tone: 'gray' },
 };
 
-export const MATERIAL_LABELS: Record<string, string> = {
-  CONCRETE: 'Бетон',
-  SAND: 'Песок',
-  GRAVEL: 'Щебень',
-  CEMENT: 'Цемент',
-  MORTAR: 'Раствор',
-  OTHER: 'Другое',
-};
-
-export const PUMP_TYPE_LABELS: Record<string, string> = {
-  AUTO: 'Автобетононасос',
-  STATIONARY: 'Стационарный насос',
-};
+// Лейблы по категориям каталога (бетон/тощий бетон/растворы/насос и т.д.) и
+// PUMP_TYPE_LABELS переехали в lib/catalog.ts вместе с остальной логикой
+// корзины — MaterialType и связанный с ним единый список материалов ушли
+// из схемы при переходе на полноценную корзину нескольких позиций.

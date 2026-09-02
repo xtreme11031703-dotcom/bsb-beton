@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendTelegramMessageToMany, siteUrl } from '@/lib/telegram';
-import { MATERIAL_LABELS } from '@/lib/utils';
+import { summarizeOrderItems } from '@/lib/catalog';
 
 // Проверка "зависших" заказов — вызывается по расписанию извне (не Next.js,
 // у serverless-функций нет фонового таймера). Варианты запуска описаны в README,
@@ -41,6 +41,7 @@ async function handleCheck(req: NextRequest) {
       createdAt: { lt: threshold },
       staleAlertSentAt: null,
     },
+    include: { items: true },
   });
 
   if (staleOrders.length === 0) {
@@ -55,13 +56,13 @@ async function handleCheck(req: NextRequest) {
 
   for (const order of staleOrders) {
     const minutesWaiting = Math.round((Date.now() - order.createdAt.getTime()) / 60000);
-    const materialLabel = MATERIAL_LABELS[order.materialType] ?? order.materialType;
+    const summary = summarizeOrderItems(order.items);
 
     if (adminChatIds.length > 0) {
       await sendTelegramMessageToMany(
         adminChatIds,
         `⏰ Заказ ${order.orderNumber} висит без завода уже ${minutesWaiting} мин.\n` +
-          `${materialLabel}, ${order.quantity} м³, адрес: ${order.addressText}\n\n` +
+          `${summary}, адрес: ${order.addressText}\n\n` +
           `Назначить вручную: ${siteUrl('/admin/orders')}`,
       );
     }

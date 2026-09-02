@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { listAllPlants } from '@/app/actions/admin';
-import { MATERIAL_LABELS } from '@/lib/utils';
+import { PRODUCT_CATEGORY_LABELS } from '@/lib/catalog';
 
 export default async function AdminPlantsPage() {
   const plants = await listAllPlants();
@@ -29,7 +29,7 @@ export default async function AdminPlantsPage() {
             <p className="mt-1 text-sm text-navy-500">{plant.address}</p>
             <p className="mt-1 text-sm text-navy-400">Радиус: {plant.radiusKm} км</p>
             <p className="mt-1 text-sm text-navy-400">
-              {plant.materials.map((m) => MATERIAL_LABELS[m]).join(', ')}
+              {plant.categories.map((c) => PRODUCT_CATEGORY_LABELS[c]).join(', ')}
             </p>
             <p className="mt-1 text-sm text-navy-400">Заказов: {plant._count.orders}</p>
           </Link>

@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SiteHeader } from '@/components/SiteHeader';
 import { getClientOrderById } from '@/app/actions/orders';
-import { MATERIAL_LABELS, ORDER_STATUS_LABELS, PUMP_TYPE_LABELS } from '@/lib/utils';
+import { ORDER_STATUS_LABELS } from '@/lib/utils';
+import { describeCartItem, describeCartItemQuantity } from '@/lib/catalog';
 import { StatusBadge } from '@/components/StatusBadge';
 import { company } from '@/lib/company';
 import { OrderStatusPoller } from './OrderStatusPoller';
@@ -39,17 +40,19 @@ export default async function ClientOrderDetailPage({ params }: { params: { id: 
           )}
 
           <div className="mt-5 space-y-2 border-t border-surface-border pt-4">
-            <Row label="Материал" value={MATERIAL_LABELS[order.materialType]} />
-            {order.concreteGrade && <Row label="Марка" value={order.concreteGrade} />}
-            <Row label="Количество" value={`${order.quantity} м³`} />
-            <Row
-              label="Бетононасос"
-              value={
-                order.pumpRequired
-                  ? `${PUMP_TYPE_LABELS[order.pumpType ?? 'AUTO']}${order.pumpLength ? ' ' + order.pumpLength : ''}`
-                  : 'Не требуется'
-              }
-            />
+            <div>
+              <span className="text-sm text-navy-400">Товары</span>
+              <ul className="mt-1 space-y-1">
+                {order.items.map((item) => (
+                  <li key={item.id} className="flex justify-between gap-4 text-sm">
+                    <span className="text-navy-800">{describeCartItem(item)}</span>
+                    {describeCartItemQuantity(item) && (
+                      <span className="shrink-0 font-medium text-navy-800">{describeCartItemQuantity(item)}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
             <Row label="Адрес" value={order.addressText} />
             <Row
               label="Дата и время"

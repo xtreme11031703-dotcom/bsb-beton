@@ -23,13 +23,32 @@ enum PlantStatus {
   INACTIVE
 }
 
-enum MaterialType {
-  CONCRETE
-  SAND
-  GRAVEL
-  CEMENT
-  MORTAR
-  OTHER
+// Категории товара — 1 в 1 соответствуют разделам каталога bsb-beton.ru/catalog
+// (см. lib/company.ts -> serviceCategories и lib/catalog.ts). Пришли на смену
+// MaterialType: теперь это и категория позиции в корзине заказа, и то, что
+// завод указывает у себя в "Доступные категории" (Plant.categories).
+enum ProductCategory {
+  BETON // Товарный бетон
+  TOSHCHIY_BETON // Тощий бетон
+  VYSOKOPROCHNYY_BETON // Высокопрочный бетон
+  POLISTIROLBETON // Полистиролбетон
+  RASTVORY // Растворы и пескобетон
+  NASOS // Аренда бетононасоса — заказывается отдельной позицией в корзине
+}
+
+// Наполнитель для товарного бетона (bsb-beton.ru: "бетон на гравии, граните
+// и керамзитобетон") — актуально только для категории BETON.
+enum ConcreteAggregate {
+  GRAVEL // На гравии
+  GRANITE // На граните
+  EXPANDED_CLAY // Керамзитобетон
+}
+
+// Подвид раствора — актуально только для категории RASTVORY.
+enum MortarKind {
+  CEMENT // Цементный раствор
+  SPECIAL // Специальный раствор
+  SAND_CONCRETE // Пескобетон
 }
 
 enum ConcreteGrade {
@@ -110,7 +129,10 @@ model Plant {
   phone      String
   status     PlantStatus  @default(ACTIVE)
   radiusKm   Int          @default(50)
-  materials  MaterialType[]
+  // Какие категории каталога завод может производить/предоставлять — по
+  // умолчанию все, чтобы `prisma db push` безопасно проставил значение уже
+  // существующим заводам без ручной миграции данных (см. scripts/add-real-plants.ts).
+  categories ProductCategory[] @default([BETON, TOSHCHIY_BETON, VYSOKOPROCHNYY_BETON, POLISTIROLBETON, RASTVORY, NASOS])
   createdAt  DateTime     @default(now())
 
   users       User[]
@@ -128,22 +150,11 @@ model Order {
   plantId String? // назначенный завод (заполняется, когда кто-то "берёт" заказ)
   plant   Plant?  @relation("AssignedOrders", fields: [plantId], references: [id])
 
-  materialType  MaterialType
-  concreteGrade ConcreteGrade?
-  quantity      Float
-
-  // Доп. характеристики бетона — необязательные для MVP
-  concreteClass       String?
-  mobility            String?
-  frostResistance     String?
-  waterResistance     String?
-  hasFiber            Boolean @default(false)
-  additionalWishes    String?
-
-  pumpRequired Boolean   @default(false)
-  pumpType     PumpType?
-  pumpLength   String? // например "36" или "Другой"
-  pumpNote     String?
+  // Позиции корзины — заказ может содержать несколько разных товаров
+  // (например, бетон М300 + аренда насоса одной строкой). Раньше эти поля
+  // были прямо на Order (один материал на заказ) — вынесены в OrderItem,
+  // когда добавили полноценную корзину (см. lib/catalog.ts).
+  items OrderItem[]
 
   addressText String
   latitude    Float
@@ -172,6 +183,44 @@ model Order {
 
   @@index([status])
   @@index([clientId])
+}
+
+// Одна позиция корзины заказа. Набор заполненных полей зависит от category —
+// см. lib/catalog.ts (там же лейблы и то, какие поля показывать в форме для
+// каждой категории). Например, для NASOS не заполняются concreteGrade/aggregate/
+// mortarKind, зато заполняются pumpType/pumpLength.
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  category ProductCategory
+
+  // Бетон/тощий бетон/высокопрочный бетон/полистиролбетон
+  concreteGrade ConcreteGrade?
+  aggregate     ConcreteAggregate? // только для BETON ("на гравии/граните" или керамзитобетон)
+  concreteClass String? // например "B22.5"
+  mobility      String?
+  frostResistance String?
+  waterResistance String?
+  hasFiber        Boolean @default(false)
+
+  // Растворы
+  mortarKind MortarKind?
+
+  // Аренда бетононасоса
+  pumpType   PumpType?
+  pumpLength String? // например "36" или "Другой"
+  pumpNote   String?
+
+  // Объём в м³ — не используется для NASOS (там позиция считается штучно/по вызову)
+  quantity Float @default(0)
+
+  additionalWishes String?
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
 }
 
 // Связь "заказ доступен заводу" — по одной строке на каждый подходящий завод.

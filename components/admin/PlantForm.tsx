@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { upsertPlant, deactivatePlant } from '@/app/actions/admin';
-import { MATERIAL_LABELS } from '@/lib/utils';
+import { PRODUCT_CATEGORY_LABELS, ALL_PRODUCT_CATEGORIES } from '@/lib/catalog';
 import YandexAddressMap from '@/components/YandexAddressMap';
 
 type PlantData = {
@@ -15,7 +15,7 @@ type PlantData = {
   phone: string;
   radiusKm: number;
   status: 'ACTIVE' | 'INACTIVE';
-  materials: string[];
+  categories: string[];
 } | null;
 
 export function PlantForm({ plant }: { plant: PlantData }) {
@@ -123,18 +123,18 @@ export function PlantForm({ plant }: { plant: PlantData }) {
         </select>
       </div>
       <div>
-        <p className="field-label">Доступные материалы</p>
+        <p className="field-label">Доступные категории</p>
         <div className="grid grid-cols-2 gap-2">
-          {Object.entries(MATERIAL_LABELS).map(([value, label]) => (
+          {ALL_PRODUCT_CATEGORIES.map((value) => (
             <label key={value} className="flex items-center gap-2 text-sm text-navy-700">
               <input
                 type="checkbox"
-                name="materials"
+                name="categories"
                 value={value}
-                defaultChecked={plant?.materials?.includes(value) ?? value === 'CONCRETE'}
+                defaultChecked={plant?.categories?.includes(value) ?? true}
                 className="h-4 w-4 rounded border-surface-border"
               />
-              {label}
+              {PRODUCT_CATEGORY_LABELS[value]}
             </label>
           ))}
         </div>

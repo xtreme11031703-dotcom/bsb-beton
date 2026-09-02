@@ -40,7 +40,7 @@ async function main() {
         phone: p.phone,
         status: 'ACTIVE',
         radiusKm: 50,
-        materials: ['CONCRETE', 'SAND', 'GRAVEL', 'CEMENT', 'MORTAR'],
+        categories: ['BETON', 'TOSHCHIY_BETON', 'VYSOKOPROCHNYY_BETON', 'POLISTIROLBETON', 'RASTVORY', 'NASOS'],
       },
     });
     createdPlants.push(plant);

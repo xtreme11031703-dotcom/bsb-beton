@@ -13,7 +13,7 @@ export default async function EditPlantPage({ params }: { params: { id: string }
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-navy-800">{plant.name}</h1>
-      <PlantForm plant={{ ...plant, materials: plant.materials as string[] }} />
+      <PlantForm plant={{ ...plant, categories: plant.categories as string[] }} />
       <PlantUsers plantId={plant.id} users={plantUsers} />
     </div>
   );

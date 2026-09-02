@@ -1,5 +1,5 @@
 import { listAllOrders, listAllPlants } from '@/app/actions/admin';
-import { MATERIAL_LABELS } from '@/lib/utils';
+import { summarizeOrderItems } from '@/lib/catalog';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OrderActions } from './OrderActions';
 
@@ -22,8 +22,7 @@ export default async function AdminOrdersPage() {
               <tr>
                 <th className="px-4 py-3">№ заказа</th>
                 <th className="px-4 py-3">Клиент</th>
-                <th className="px-4 py-3">Материал</th>
-                <th className="px-4 py-3">Кол-во</th>
+                <th className="px-4 py-3">Товары</th>
                 <th className="px-4 py-3">Адрес</th>
                 <th className="px-4 py-3">Дата</th>
                 <th className="px-4 py-3">Завод</th>
@@ -36,11 +35,9 @@ export default async function AdminOrdersPage() {
                 <tr key={order.id} className="border-b border-surface-border last:border-0 hover:bg-surface-muted/60">
                   <td className="px-4 py-3.5 font-medium text-navy-800">{order.orderNumber}</td>
                   <td className="px-4 py-3.5 text-navy-600">{order.client.name}</td>
-                  <td className="px-4 py-3.5 text-navy-600">
-                    {MATERIAL_LABELS[order.materialType]}
-                    {order.concreteGrade ? ` ${order.concreteGrade}` : ''}
+                  <td className="max-w-[240px] truncate px-4 py-3.5 text-navy-600" title={summarizeOrderItems(order.items)}>
+                    {summarizeOrderItems(order.items)}
                   </td>
-                  <td className="px-4 py-3.5 text-navy-600">{order.quantity} м³</td>
                   <td className="max-w-[180px] truncate px-4 py-3.5 text-navy-600" title={order.addressText}>
                     {order.addressText}
                   </td>

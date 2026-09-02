@@ -4,26 +4,33 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getSession, createSession } from '@/lib/session';
 import { hashPassword, verifyPassword } from '@/lib/auth';
-import { generateOrderNumber, distanceKm, MATERIAL_LABELS } from '@/lib/utils';
+import { generateOrderNumber, distanceKm } from '@/lib/utils';
+import { distinctCategories, plantCoversCategories, summarizeOrderItems } from '@/lib/catalog';
 import { sendTelegramMessageToMany, siteUrl } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
-const orderSchema = z.object({
-  materialType: z.enum(['CONCRETE', 'SAND', 'GRAVEL', 'CEMENT', 'MORTAR', 'OTHER']),
-  concreteGrade: z
-    .enum(['M100', 'M150', 'M200', 'M250', 'M300', 'M350', 'M400', 'M450', 'M500'])
-    .optional(),
-  quantity: z.coerce.number().min(1, 'Минимум 1 м³'),
+const CATEGORIES = ['BETON', 'TOSHCHIY_BETON', 'VYSOKOPROCHNYY_BETON', 'POLISTIROLBETON', 'RASTVORY', 'NASOS'] as const;
+const GRADES = ['M100', 'M150', 'M200', 'M250', 'M300', 'M350', 'M400', 'M450', 'M500'] as const;
+
+const itemSchema = z.object({
+  category: z.enum(CATEGORIES),
+  concreteGrade: z.enum(GRADES).optional(),
+  aggregate: z.enum(['GRAVEL', 'GRANITE', 'EXPANDED_CLAY']).optional(),
   concreteClass: z.string().optional(),
   mobility: z.string().optional(),
   frostResistance: z.string().optional(),
   waterResistance: z.string().optional(),
   hasFiber: z.coerce.boolean().optional(),
-  additionalWishes: z.string().optional(),
-  pumpRequired: z.coerce.boolean(),
+  mortarKind: z.enum(['CEMENT', 'SPECIAL', 'SAND_CONCRETE']).optional(),
   pumpType: z.enum(['AUTO', 'STATIONARY']).optional(),
   pumpLength: z.string().optional(),
   pumpNote: z.string().optional(),
+  quantity: z.coerce.number().min(0).default(0),
+  additionalWishes: z.string().optional(),
+});
+
+const orderSchema = z.object({
+  items: z.array(itemSchema).min(1, 'Добавьте хотя бы одну позицию в корзину'),
   addressText: z.string().min(3, 'Укажите адрес'),
   latitude: z.coerce.number(),
   longitude: z.coerce.number(),
@@ -89,12 +96,15 @@ export async function submitOrder(input: unknown): Promise<ActionResult> {
     return { ok: false, error: 'Заказы может оформлять только клиент' };
   }
 
-  // Ищем подходящие активные заводы: материал в списке + доставка в радиусе работы завода
-  const candidatePlants = await prisma.plant.findMany({
-    where: { status: 'ACTIVE', materials: { has: data.materialType } },
-  });
+  // Ищем подходящие активные заводы: завод должен уметь ВСЕ категории из
+  // корзины (см. plantCoversCategories) + доставка должна укладываться в
+  // радиус работы завода. Заказ целиком уходит одному заводу — разбивки
+  // разных позиций по разным заводам в MVP нет.
+  const neededCategories = distinctCategories(data.items);
+  const candidatePlants = await prisma.plant.findMany({ where: { status: 'ACTIVE' } });
 
   const matchingPlants = candidatePlants
+    .filter((plant) => plantCoversCategories(plant.categories, neededCategories))
     .map((plant) => ({
       plant,
       distance: distanceKm(data.latitude, data.longitude, plant.latitude, plant.longitude),
@@ -108,19 +118,24 @@ export async function submitOrder(input: unknown): Promise<ActionResult> {
     data: {
       orderNumber,
       clientId: session.userId,
-      materialType: data.materialType,
-      concreteGrade: data.concreteGrade,
-      quantity: data.quantity,
-      concreteClass: data.concreteClass || null,
-      mobility: data.mobility || null,
-      frostResistance: data.frostResistance || null,
-      waterResistance: data.waterResistance || null,
-      hasFiber: data.hasFiber ?? false,
-      additionalWishes: data.additionalWishes || null,
-      pumpRequired: data.pumpRequired,
-      pumpType: data.pumpRequired ? data.pumpType : null,
-      pumpLength: data.pumpRequired ? data.pumpLength : null,
-      pumpNote: data.pumpRequired ? data.pumpNote : null,
+      items: {
+        create: data.items.map((item) => ({
+          category: item.category,
+          concreteGrade: item.concreteGrade,
+          aggregate: item.aggregate,
+          concreteClass: item.concreteClass || null,
+          mobility: item.mobility || null,
+          frostResistance: item.frostResistance || null,
+          waterResistance: item.waterResistance || null,
+          hasFiber: item.hasFiber ?? false,
+          mortarKind: item.mortarKind,
+          pumpType: item.pumpType,
+          pumpLength: item.pumpLength || null,
+          pumpNote: item.pumpNote || null,
+          quantity: item.quantity ?? 0,
+          additionalWishes: item.additionalWishes || null,
+        })),
+      },
       addressText: data.addressText,
       latitude: data.latitude,
       longitude: data.longitude,
@@ -145,10 +160,11 @@ export async function submitOrder(input: unknown): Promise<ActionResult> {
         })),
       },
     },
+    include: { items: true },
   });
 
   revalidatePath('/client/orders');
-  await notifyNewOrder(order.id, orderNumber, data.materialType, data.quantity, matchingPlants.map((m) => m.plant.id));
+  await notifyNewOrder(order.id, orderNumber, order.items, matchingPlants.map((m) => m.plant.id));
   return { ok: true, orderId: order.id, orderNumber: order.orderNumber };
 }
 
@@ -156,12 +172,10 @@ export async function submitOrder(input: unknown): Promise<ActionResult> {
 async function notifyNewOrder(
   orderId: string,
   orderNumber: string,
-  materialType: string,
-  quantity: number,
+  items: Parameters<typeof summarizeOrderItems>[0],
   matchingPlantIds: string[],
 ) {
-  const materialLabel = MATERIAL_LABELS[materialType] ?? materialType;
-  const summary = `${materialLabel}, ${quantity} м³`;
+  const summary = summarizeOrderItems(items);
 
   const [plantUsers, adminUsers] = await Promise.all([
     matchingPlantIds.length > 0
@@ -189,7 +203,7 @@ async function notifyNewOrder(
     const adminText =
       matchingPlantIds.length > 0
         ? `🆕 Новый заказ ${orderNumber}\n${summary}\nДоступен ${matchingPlantIds.length} завод(ам).`
-        : `⚠️ Заказ ${orderNumber} без подходящего завода\n${summary}\n\nНи один завод не подошёл автоматически (материал/радиус доставки) — нужно назначить вручную: ${siteUrl('/admin/orders')}`;
+        : `⚠️ Заказ ${orderNumber} без подходящего завода\n${summary}\n\nНи один завод не подошёл автоматически (категория товара/радиус доставки) — нужно назначить вручную: ${siteUrl('/admin/orders')}`;
 
     await sendTelegramMessageToMany(adminChatIds, adminText);
   }
@@ -200,7 +214,7 @@ export async function getClientOrders() {
   if (!session || session.role !== 'CLIENT') return [];
   return prisma.order.findMany({
     where: { clientId: session.userId },
-    include: { plant: true },
+    include: { plant: true, items: true },
     orderBy: { createdAt: 'desc' },
   });
 }
@@ -210,7 +224,7 @@ export async function getClientOrderById(orderId: string) {
   if (!session || session.role !== 'CLIENT') return null;
   const order = await prisma.order.findFirst({
     where: { id: orderId, clientId: session.userId },
-    include: { plant: true, statusHistory: { orderBy: { createdAt: 'asc' } } },
+    include: { plant: true, items: true, statusHistory: { orderBy: { createdAt: 'asc' } } },
   });
   return order;
 }

@@ -43,17 +43,15 @@ export async function getAdminStats() {
 
 export async function listAllOrders(filters?: {
   status?: OrderStatus;
-  materialType?: string;
   plantId?: string;
 }) {
   await requireAdmin();
   return prisma.order.findMany({
     where: {
       status: filters?.status,
-      materialType: filters?.materialType as never,
       plantId: filters?.plantId,
     },
-    include: { client: true, plant: true },
+    include: { client: true, plant: true, items: true },
     orderBy: { createdAt: 'desc' },
   });
 }
@@ -132,14 +130,14 @@ const plantSchema = z.object({
   phone: z.string().min(5),
   radiusKm: z.coerce.number().min(1),
   status: z.enum(['ACTIVE', 'INACTIVE']),
-  materials: z.array(z.string()).min(1),
+  categories: z.array(z.string()).min(1, 'Выберите хотя бы одну категорию'),
 });
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function upsertPlant(plantId: string | null, formData: FormData): Promise<ActionResult> {
   await requireAdmin();
-  const materials = formData.getAll('materials') as string[];
+  const categories = formData.getAll('categories') as string[];
   const parsed = plantSchema.safeParse({
     name: formData.get('name'),
     address: formData.get('address'),
@@ -148,11 +146,11 @@ export async function upsertPlant(plantId: string | null, formData: FormData): P
     phone: formData.get('phone'),
     radiusKm: formData.get('radiusKm'),
     status: formData.get('status'),
-    materials,
+    categories,
   });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
 
-  const data = { ...parsed.data, materials: parsed.data.materials as never };
+  const data = { ...parsed.data, categories: parsed.data.categories as never };
 
   if (plantId) {
     await prisma.plant.update({ where: { id: plantId }, data });

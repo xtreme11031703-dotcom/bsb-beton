@@ -28,11 +28,12 @@ export async function getPlantOrders() {
   const [available, mine] = await Promise.all([
     prisma.orderPlant.findMany({
       where: { plantId: session.plantId, status: 'AVAILABLE', order: { status: 'SEARCHING_PLANT' } },
-      include: { order: true },
+      include: { order: { include: { items: true } } },
       orderBy: { createdAt: 'asc' },
     }),
     prisma.order.findMany({
       where: { plantId: session.plantId },
+      include: { items: true },
       orderBy: { updatedAt: 'desc' },
     }),
   ]);
@@ -146,6 +147,6 @@ export async function getPlantOrderDetail(orderId: string) {
   if (!session || session.role !== 'PLANT' || !session.plantId) return null;
   return prisma.order.findFirst({
     where: { id: orderId, plantId: session.plantId },
-    include: { client: true },
+    include: { client: true, items: true },
   });
 }
