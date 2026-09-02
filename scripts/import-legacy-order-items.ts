@@ -25,7 +25,7 @@
 import { loadEnv } from './load-env';
 loadEnv();
 
-import { PrismaClient, type ProductCategory } from '@prisma/client';
+import { PrismaClient, type ConcreteGrade, type ProductCategory } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 
@@ -103,7 +103,11 @@ async function main() {
       {
         orderId: row.id,
         category,
-        concreteGrade: row.concreteGrade ?? null,
+        // Старые заказы могли хранить марку только среди тех, что были в
+        // прежнем (более коротком) списке GRADES — это подмножество
+        // сегодняшнего enum ConcreteGrade, поэтому приведение типа тут
+        // безопасно и не требует валидации значения.
+        concreteGrade: (row.concreteGrade as ConcreteGrade | null) ?? null,
         concreteClass: row.concreteClass ?? null,
         mobility: row.mobility ?? null,
         frostResistance: row.frostResistance ?? null,
