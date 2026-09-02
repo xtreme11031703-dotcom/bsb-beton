@@ -3,6 +3,7 @@
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { changeOrderStatus, cancelOrder, assignOrderManually } from '@/app/actions/admin';
+import { ORDER_STATUS_LABELS } from '@/lib/utils';
 import type { OrderStatus } from '@prisma/client';
 
 const STATUS_OPTIONS: OrderStatus[] = [
@@ -45,7 +46,7 @@ export function OrderActions({
       >
         {STATUS_OPTIONS.map((s) => (
           <option key={s} value={s}>
-            {s}
+            {ORDER_STATUS_LABELS[s]?.label ?? s}
           </option>
         ))}
       </select>
