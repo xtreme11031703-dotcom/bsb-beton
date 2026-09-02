@@ -41,7 +41,7 @@ export function OrderActions({
             router.refresh();
           });
         }}
-        className="rounded-lg border border-surface-border px-2 py-1.5 text-xs"
+        className="rounded-lg border border-surface-border bg-white px-2 py-1.5 text-xs text-navy-700 transition-colors hover:border-navy-300 focus:border-navy-500 focus:outline-none disabled:opacity-50"
       >
         {STATUS_OPTIONS.map((s) => (
           <option key={s} value={s}>
@@ -62,7 +62,7 @@ export function OrderActions({
               router.refresh();
             });
           }}
-          className="rounded-lg border border-surface-border px-2 py-1.5 text-xs"
+          className="rounded-lg border border-surface-border bg-white px-2 py-1.5 text-xs text-navy-700 transition-colors hover:border-navy-300 focus:border-navy-500 focus:outline-none disabled:opacity-50"
         >
           <option value="">Назначить завод…</option>
           {plants.map((p) => (
@@ -82,7 +82,7 @@ export function OrderActions({
               router.refresh();
             })
           }
-          className="rounded-lg border border-red-200 px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+          className="rounded-lg border border-red-200 px-2 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
         >
           Отменить
         </button>

@@ -97,25 +97,35 @@ export async function takeOrder(orderId: string): Promise<TakeOrderResult> {
     return { ok: false, error: 'Заказ уже забрал другой завод' };
   }
 
-  await notifyClientPlantAssigned(orderId, plantId);
+  await notifyClientPlantAssigned(orderId);
   return { ok: true };
 }
 
-/** Уведомляет клиента в Telegram, что заводу назначен его заказ. */
-async function notifyClientPlantAssigned(orderId: string, plantId: string) {
+/**
+ * Уведомляет клиента в Telegram, что заводу назначен его заказ.
+ *
+ * Данные завода клиенту намеренно не раскрываются (и наоборот — см.
+ * getPlantOrders/getPlantOrderDetail ниже, там нет client-полей в выборке
+ * для интерфейса завода): по требованию заказчика стороны видят только
+ * адрес и логистику, а не контакты друг друга.
+ */
+async function notifyClientPlantAssigned(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { client: true },
   });
-  const plant = await prisma.plant.findUnique({ where: { id: plantId } });
-  if (!order?.client.telegramChatId || !plant) return;
+  if (!order?.client.telegramChatId) return;
 
   await sendTelegramMessage(
     order.client.telegramChatId,
-    `🟢 Заказ ${order.orderNumber} — завод найден!\n\n${plant.name}, ${plant.phone}\n\nСледить за статусом: ${siteUrl(`/client/orders/${order.id}`)}`,
+    `🟢 Заказ ${order.orderNumber} — завод найден!\n\nГотовим доставку по адресу: ${order.addressText}\n\nСледить за статусом: ${siteUrl(`/client/orders/${order.id}`)}`,
   );
 }
 
+// Пока нигде не используется (нет отдельной страницы деталей заказа завода).
+// ВАЖНО: если будете строить такую страницу — не рендерите client.name/phone,
+// заводу не должны быть видны контакты клиента (см. комментарий у
+// notifyClientPlantAssigned выше).
 export async function getPlantOrderDetail(orderId: string) {
   const session = await getSession();
   if (!session || session.role !== 'PLANT' || !session.plantId) return null;

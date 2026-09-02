@@ -31,12 +31,36 @@ const mapInstanceRef = useRef<any>(null);
 const deliveryMarkerRef = useRef<any>(null);
 const plantsMarkersRef = useRef<any[]>([]);
 const onChangeRef = useRef(onChange);
+const onAddressChangeRef = useRef(onAddressChange);
+const reverseGeocodeRef = useRef<(lat: number, lng: number) => void>(() => {});
 const [searching, setSearching] = useState(false);
 const [searchError, setSearchError] = useState<string | null>(null);
 
 useEffect(() => {
 onChangeRef.current = onChange;
 }, [onChange]);
+
+useEffect(() => {
+onAddressChangeRef.current = onAddressChange;
+}, [onAddressChange]);
+
+// Обратное геокодирование: точку передвинули на карте (клик или
+// перетаскивание) — подтягиваем текстовый адрес под новые координаты,
+// чтобы поле адреса не расходилось с фактическим местом на карте.
+useEffect(() => {
+reverseGeocodeRef.current = async (lat: number, lng: number) => {
+  try {
+    const ymaps3 = (window as any).ymaps3;
+    if (!ymaps3) return;
+    await ymaps3.ready;
+    const result = await ymaps3.search({ text: `${lat}, ${lng}`, limit: 1 });
+    const found = result?.[0]?.properties?.name || result?.[0]?.properties?.description;
+    if (found) onAddressChangeRef.current(found);
+  } catch (error) {
+    console.error('Ошибка обратного геокодирования:', error);
+  }
+};
+}, []);
 
 useEffect(() => {
 let cancelled = false;
@@ -178,6 +202,16 @@ async function initMap() {
             markerCoordinates;
 
           onChangeRef.current(
+            Number(newLatitude),
+            Number(newLongitude)
+          );
+
+          // Точку перетащили — текст адреса теперь не соответствует
+          // реальному месту на карте, пока не подтянем его обратным
+          // геокодированием. Раньше это никак не синхронизировалось:
+          // человек двигал метку, а в заявке оставался старый введённый
+          // текст адреса.
+          reverseGeocodeRef.current(
             Number(newLatitude),
             Number(newLongitude)
           );
@@ -359,6 +393,14 @@ onAddressChange(event.target.value);
 setSearchError(null);
 }}
 onKeyDown={handleKeyDown}
+onBlur={() => {
+  // Раньше координаты синхронизировались только по клику «Найти» — если
+  // человек просто ввёл адрес и перешёл дальше (например, кликнул
+  // «Продолжить»), в заявке оставались координаты по умолчанию (центр
+  // Москвы), не соответствующие введённому адресу. Теперь подхватываем
+  // адрес и при уходе фокуса с поля.
+  if (address.trim().length >= 3) searchAddress();
+}}
 placeholder="Москва, ул. Примерная, 10"
 className="field-input min-w-0 flex-1"
 />

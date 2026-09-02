@@ -2,7 +2,8 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { getPlantOrders } from '@/app/actions/plants';
 import { getTelegramStatus } from '@/app/actions/telegram';
 import { TelegramLinkCard } from '@/components/TelegramLinkCard';
-import { MATERIAL_LABELS, ORDER_STATUS_LABELS, PUMP_TYPE_LABELS } from '@/lib/utils';
+import { MATERIAL_LABELS, PUMP_TYPE_LABELS } from '@/lib/utils';
+import { StatusBadge } from '@/components/StatusBadge';
 import { TakeOrderButton } from './TakeOrderButton';
 import { PlantOrdersPoller } from './PlantOrdersPoller';
 
@@ -85,20 +86,25 @@ export default async function PlantDashboardPage() {
             <div className="space-y-3">
               {active.map((order) => (
                 <div key={order.id} className="card">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <span className="font-semibold text-navy-800">{order.orderNumber}</span>
-                    <span className="text-sm">
-                      {ORDER_STATUS_LABELS[order.status].emoji} {ORDER_STATUS_LABELS[order.status].label}
-                    </span>
+                    <StatusBadge status={order.status} />
                   </div>
-                  <p className="mt-1 text-sm text-navy-600">
+                  <p className="mt-1.5 text-sm text-navy-600">
                     {MATERIAL_LABELS[order.materialType]}
                     {order.concreteGrade ? ` ${order.concreteGrade}` : ''} • {order.quantity} м³
                   </p>
-                  <p className="mt-1 text-sm text-navy-400">{order.addressText}</p>
-                  <p className="mt-1 text-sm font-medium text-navy-700">
-                    {order.contactName} · {order.contactPhone}
+                  <p className="mt-1 text-sm font-medium text-navy-700">{order.addressText}</p>
+                  <p className="mt-1 text-sm text-navy-400">
+                    {new Date(order.deliveryDate).toLocaleDateString('ru-RU')}, {order.deliveryTimeFrom}–
+                    {order.deliveryTimeTo}
                   </p>
+                  {order.pumpRequired && (
+                    <p className="mt-1 text-sm text-navy-400">
+                      Насос: {PUMP_TYPE_LABELS[order.pumpType ?? 'AUTO']}
+                      {order.pumpLength ? ` ${order.pumpLength}` : ''}
+                    </p>
+                  )}
                   {order.comment && <p className="mt-1 text-sm text-navy-400">Комментарий: {order.comment}</p>}
                 </div>
               ))}
@@ -114,12 +120,11 @@ export default async function PlantDashboardPage() {
             <div className="space-y-3">
               {completed.map((order) => (
                 <div key={order.id} className="card opacity-70">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <span className="font-semibold text-navy-800">{order.orderNumber}</span>
-                    <span className="text-sm">
-                      {ORDER_STATUS_LABELS[order.status].emoji} {ORDER_STATUS_LABELS[order.status].label}
-                    </span>
+                    <StatusBadge status={order.status} />
                   </div>
+                  <p className="mt-1 text-sm text-navy-400">{order.addressText}</p>
                 </div>
               ))}
             </div>

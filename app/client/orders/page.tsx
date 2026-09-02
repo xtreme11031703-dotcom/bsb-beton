@@ -3,7 +3,8 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { getClientOrders } from '@/app/actions/orders';
 import { getTelegramStatus } from '@/app/actions/telegram';
 import { TelegramLinkCard } from '@/components/TelegramLinkCard';
-import { MATERIAL_LABELS, ORDER_STATUS_LABELS } from '@/lib/utils';
+import { StatusBadge } from '@/components/StatusBadge';
+import { MATERIAL_LABELS } from '@/lib/utils';
 
 export default async function ClientOrdersPage() {
   const [orders, telegramStatus] = await Promise.all([getClientOrders(), getTelegramStatus()]);
@@ -37,31 +38,23 @@ export default async function ClientOrdersPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {orders.map((order) => {
-              const status = ORDER_STATUS_LABELS[order.status];
-              return (
-                <Link
-                  key={order.id}
-                  href={`/client/orders/${order.id}`}
-                  className="card block transition-shadow hover:shadow-lg"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-navy-800">{order.orderNumber}</span>
-                    <span className="text-sm">
-                      {status.emoji} {status.label}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-navy-500">
-                    {MATERIAL_LABELS[order.materialType]}
-                    {order.concreteGrade ? ` • ${order.concreteGrade}` : ''} • {order.quantity} м³
-                  </p>
-                  <p className="mt-1 text-sm text-navy-400">{order.addressText}</p>
-                  {order.plant && (
-                    <p className="mt-1 text-sm font-medium text-navy-600">Завод: {order.plant.name}</p>
-                  )}
-                </Link>
-              );
-            })}
+            {orders.map((order) => (
+              <Link
+                key={order.id}
+                href={`/client/orders/${order.id}`}
+                className="card card-hover block"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-navy-800">{order.orderNumber}</span>
+                  <StatusBadge status={order.status} />
+                </div>
+                <p className="mt-1.5 text-sm text-navy-500">
+                  {MATERIAL_LABELS[order.materialType]}
+                  {order.concreteGrade ? ` • ${order.concreteGrade}` : ''} • {order.quantity} м³
+                </p>
+                <p className="mt-1 text-sm text-navy-400">{order.addressText}</p>
+              </Link>
+            ))}
           </div>
         )}
       </main>

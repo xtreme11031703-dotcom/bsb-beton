@@ -1,5 +1,6 @@
 import { listAllOrders, listAllPlants } from '@/app/actions/admin';
-import { MATERIAL_LABELS, ORDER_STATUS_LABELS } from '@/lib/utils';
+import { MATERIAL_LABELS } from '@/lib/utils';
+import { StatusBadge } from '@/components/StatusBadge';
 import { OrderActions } from './OrderActions';
 
 export default async function AdminOrdersPage() {
@@ -7,43 +8,50 @@ export default async function AdminOrdersPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-navy-800">Заказы</h1>
-      <div className="card overflow-x-auto p-0">
-        <table className="w-full min-w-[900px] text-left text-sm">
-          <thead className="border-b border-surface-border bg-surface-muted text-navy-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">№ заказа</th>
-              <th className="px-4 py-3 font-medium">Клиент</th>
-              <th className="px-4 py-3 font-medium">Материал</th>
-              <th className="px-4 py-3 font-medium">Кол-во</th>
-              <th className="px-4 py-3 font-medium">Адрес</th>
-              <th className="px-4 py-3 font-medium">Дата</th>
-              <th className="px-4 py-3 font-medium">Завод</th>
-              <th className="px-4 py-3 font-medium">Статус</th>
-              <th className="px-4 py-3 font-medium">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => {
-              const status = ORDER_STATUS_LABELS[order.status];
-              return (
-                <tr key={order.id} className="border-b border-surface-border last:border-0">
-                  <td className="px-4 py-3 font-medium text-navy-800">{order.orderNumber}</td>
-                  <td className="px-4 py-3 text-navy-600">{order.client.name}</td>
-                  <td className="px-4 py-3 text-navy-600">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-navy-800">Заказы</h1>
+        <span className="text-sm text-navy-400">Всего: {orders.length}</span>
+      </div>
+
+      {orders.length === 0 ? (
+        <div className="card text-center text-sm text-navy-400">Пока нет ни одного заказа.</div>
+      ) : (
+        <div className="card overflow-x-auto !p-0">
+          <table className="w-full min-w-[960px] text-left text-sm">
+            <thead className="border-b border-surface-border bg-surface-muted text-xs font-semibold uppercase tracking-wide text-navy-400">
+              <tr>
+                <th className="px-4 py-3">№ заказа</th>
+                <th className="px-4 py-3">Клиент</th>
+                <th className="px-4 py-3">Материал</th>
+                <th className="px-4 py-3">Кол-во</th>
+                <th className="px-4 py-3">Адрес</th>
+                <th className="px-4 py-3">Дата</th>
+                <th className="px-4 py-3">Завод</th>
+                <th className="px-4 py-3">Статус</th>
+                <th className="px-4 py-3">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id} className="border-b border-surface-border last:border-0 hover:bg-surface-muted/60">
+                  <td className="px-4 py-3.5 font-medium text-navy-800">{order.orderNumber}</td>
+                  <td className="px-4 py-3.5 text-navy-600">{order.client.name}</td>
+                  <td className="px-4 py-3.5 text-navy-600">
                     {MATERIAL_LABELS[order.materialType]}
                     {order.concreteGrade ? ` ${order.concreteGrade}` : ''}
                   </td>
-                  <td className="px-4 py-3 text-navy-600">{order.quantity} м³</td>
-                  <td className="max-w-[180px] truncate px-4 py-3 text-navy-600">{order.addressText}</td>
-                  <td className="px-4 py-3 text-navy-600">
+                  <td className="px-4 py-3.5 text-navy-600">{order.quantity} м³</td>
+                  <td className="max-w-[180px] truncate px-4 py-3.5 text-navy-600" title={order.addressText}>
+                    {order.addressText}
+                  </td>
+                  <td className="px-4 py-3.5 whitespace-nowrap text-navy-600">
                     {new Date(order.deliveryDate).toLocaleDateString('ru-RU')}
                   </td>
-                  <td className="px-4 py-3 text-navy-600">{order.plant?.name ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    {status.emoji} {status.label}
+                  <td className="px-4 py-3.5 text-navy-600">{order.plant?.name ?? '—'}</td>
+                  <td className="px-4 py-3.5">
+                    <StatusBadge status={order.status} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     <OrderActions
                       orderId={order.id}
                       currentStatus={order.status}
@@ -52,11 +60,11 @@ export default async function AdminOrdersPage() {
                     />
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

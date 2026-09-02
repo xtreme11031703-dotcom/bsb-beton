@@ -21,14 +21,16 @@ export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: numbe
   return Math.round(R * c * 10) / 10;
 }
 
-export const ORDER_STATUS_LABELS: Record<string, { label: string; emoji: string }> = {
-  NEW: { label: 'Новый', emoji: '⚪' },
-  SEARCHING_PLANT: { label: 'Ищем завод', emoji: '🟡' },
-  PLANT_ASSIGNED: { label: 'Завод найден', emoji: '🟢' },
-  CONFIRMED: { label: 'Подтверждён', emoji: '🟢' },
-  IN_DELIVERY: { label: 'В доставке', emoji: '🔵' },
-  DELIVERED: { label: 'Завершён', emoji: '✅' },
-  CANCELLED: { label: 'Отменён', emoji: '⚫' },
+export type StatusTone = 'slate' | 'amber' | 'green' | 'blue' | 'gray';
+
+export const ORDER_STATUS_LABELS: Record<string, { label: string; emoji: string; tone: StatusTone }> = {
+  NEW: { label: 'Новый', emoji: '⚪', tone: 'slate' },
+  SEARCHING_PLANT: { label: 'Ищем завод', emoji: '🟡', tone: 'amber' },
+  PLANT_ASSIGNED: { label: 'Завод найден', emoji: '🟢', tone: 'green' },
+  CONFIRMED: { label: 'Подтверждён', emoji: '🟢', tone: 'green' },
+  IN_DELIVERY: { label: 'В доставке', emoji: '🔵', tone: 'blue' },
+  DELIVERED: { label: 'Завершён', emoji: '✅', tone: 'green' },
+  CANCELLED: { label: 'Отменён', emoji: '⚫', tone: 'gray' },
 };
 
 export const MATERIAL_LABELS: Record<string, string> = {

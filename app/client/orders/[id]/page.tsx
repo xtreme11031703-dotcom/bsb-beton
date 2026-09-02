@@ -3,13 +3,13 @@ import { notFound } from 'next/navigation';
 import { SiteHeader } from '@/components/SiteHeader';
 import { getClientOrderById } from '@/app/actions/orders';
 import { MATERIAL_LABELS, ORDER_STATUS_LABELS, PUMP_TYPE_LABELS } from '@/lib/utils';
+import { StatusBadge } from '@/components/StatusBadge';
+import { company } from '@/lib/company';
 import { OrderStatusPoller } from './OrderStatusPoller';
 
 export default async function ClientOrderDetailPage({ params }: { params: { id: string } }) {
   const order = await getClientOrderById(params.id);
   if (!order) notFound();
-
-  const status = ORDER_STATUS_LABELS[order.status];
 
   return (
     <div className="min-h-screen bg-surface-muted">
@@ -20,11 +20,9 @@ export default async function ClientOrderDetailPage({ params }: { params: { id: 
         </Link>
 
         <div className="card mt-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-bold text-navy-800">{order.orderNumber}</h1>
-            <span className="text-sm font-medium">
-              {status.emoji} {status.label}
-            </span>
+            <StatusBadge status={order.status} />
           </div>
 
           {order.status === 'SEARCHING_PLANT' && (
@@ -34,8 +32,9 @@ export default async function ClientOrderDetailPage({ params }: { params: { id: 
             </p>
           )}
           {order.plant && (
-            <p className="mt-2 text-sm text-navy-600">
-              Завод: <span className="font-medium">{order.plant.name}</span> · {order.plant.phone}
+            <p className="mt-2 text-sm text-navy-500">
+              Завод подтвердил заказ и готовит доставку. Данные завода не разглашаются — если возникнут
+              вопросы, свяжитесь с нами: <a href={company.phoneHref} className="font-medium text-navy-700 underline">{company.phone}</a>.
             </p>
           )}
 
