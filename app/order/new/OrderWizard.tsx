@@ -61,6 +61,18 @@ type Step = 'catalog' | 'cart' | 'address' | 'datetime' | 'contact' | 'summary';
 
 const STEPS: Step[] = ['catalog', 'cart', 'address', 'datetime', 'contact', 'summary'];
 
+// ВРЕМЕННО: пока не почините ключ геокодера Яндекса (lib/yandex-geocoder.ts
+// возвращает 403 Invalid api key), требование "адрес обязательно подтверждён
+// геокодером" отключено — иначе на шаге адреса нельзя пройти дальше вообще
+// никак, и заказ невозможно протестировать. Карта и поле адреса продолжают
+// работать как раньше (можно и искать текстом, и таскать точку) — просто
+// «Продолжить» больше не блокируется, если геокодирование не удалось.
+// Координаты в этом случае останутся такими, какими были в состоянии формы
+// (по умолчанию — центр Москвы, см. MOSCOW_CENTER), пока их не поправят
+// вручную перетаскиванием точки на карте.
+// TODO: вернуть true, когда почините ключ геокодера.
+const REQUIRE_ADDRESS_GEOCODE = false;
+
 type OrderDetailsState = {
   addressText: string;
   latitude: number;
@@ -229,7 +241,8 @@ export function OrderWizard({
 
     // Текст адреса есть, но координаты ему могут не соответствовать — см.
     // объяснение в исходном комментарии этого мастера про addressResolved.
-    if (step === 'address' && !details.addressResolved) {
+    // REQUIRE_ADDRESS_GEOCODE временно false — см. комментарий у константы.
+    if (step === 'address' && REQUIRE_ADDRESS_GEOCODE && !details.addressResolved) {
       return setError(
         'Нажмите «Найти» рядом с адресом или отметьте точку на карте, чтобы подтвердить местоположение',
       );
@@ -664,6 +677,11 @@ export function OrderWizard({
 
       {step === 'address' && (
         <div className="space-y-4">
+          {!REQUIRE_ADDRESS_GEOCODE && (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              Поиск адреса временно может не работать — это не помешает пройти дальше и оформить заказ.
+            </p>
+          )}
           <YandexAddressMap
             address={details.addressText}
             latitude={details.latitude}
