@@ -148,30 +148,43 @@ export async function sendVisitorMessage(threadId: string, text: string): Promis
   });
   if (!thread || thread.visitorKey !== visitorKey) return { ok: false, error: 'Диалог не найден' };
 
-  // Сначала пробуем ответить ботом по FAQ — если уверенного совпадения нет,
+  // Сохраняем сообщение посетителя ПЕРВЫМ и отдельно от попытки ответа
+  // бота — это не должно быть одной транзакцией с ботом: если вдруг
+  // сохранение ответа бота почему-то упадёт, сообщение посетителя всё
+  // равно должно долететь и админ должен быть уведомлён, а не потеряться
+  // молча вместе с ошибкой бота.
+  await prisma.chatMessage.create({ data: { threadId, sender: 'VISITOR', text: trimmed } });
+
+  // Пробуем ответить ботом по FAQ — если уверенного совпадения нет,
   // matchFaq вернёт null и дальше всё идёт как раньше (уходит человеку).
   const botAnswer = matchFaq(trimmed);
+  let botAnswerSaved = false;
 
-  await prisma.$transaction([
-    prisma.chatMessage.create({ data: { threadId, sender: 'VISITOR', text: trimmed } }),
-    ...(botAnswer ? [prisma.chatMessage.create({ data: { threadId, sender: 'BOT', text: botAnswer } })] : []),
-    prisma.chatThread.update({
-      where: { id: threadId },
-      data: {
-        lastMessageAt: new Date(),
-        status: 'OPEN',
-        // Бот ответил сам — не дёргаем администратора уведомлением (админ
-        // всё равно увидит диалог целиком в /admin/chats). Если посетитель
-        // после ответа бота напишет ещё раз и бот не поймёт — это уже
-        // обычное сообщение, adminUnread снова станет true.
-        adminUnread: !botAnswer,
-        visitorUnread: !!botAnswer,
-      },
-    }),
-  ]);
+  if (botAnswer) {
+    try {
+      await prisma.chatMessage.create({ data: { threadId, sender: 'BOT', text: botAnswer } });
+      botAnswerSaved = true;
+    } catch (error) {
+      console.error('Не удалось сохранить ответ бота (сообщение посетителя уже сохранено):', error);
+    }
+  }
+
+  await prisma.chatThread.update({
+    where: { id: threadId },
+    data: {
+      lastMessageAt: new Date(),
+      status: 'OPEN',
+      // Бот ответил сам — не дёргаем администратора уведомлением (админ
+      // всё равно увидит диалог целиком в /admin/chats). Если посетитель
+      // после ответа бота напишет ещё раз и бот не поймёт — это уже
+      // обычное сообщение, adminUnread снова станет true.
+      adminUnread: !botAnswerSaved,
+      visitorUnread: botAnswerSaved,
+    },
+  });
 
   revalidatePath('/admin/chats');
-  if (!botAnswer) {
+  if (!botAnswerSaved) {
     await notifyAdminsNewChatMessage(thread.shortCode, chatDisplayName(thread), trimmed);
   }
   return { ok: true };
