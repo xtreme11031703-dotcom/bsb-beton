@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Logo } from './Logo';
 import { company } from '@/lib/company';
+import { getSiteSettings } from '@/lib/site-settings';
 
 type CompanyNavItem = (typeof company)['nav'][number];
 
@@ -9,7 +10,9 @@ const footerLinks: { href: string; label: string }[] = (company.nav as readonly 
     'href' in item ? [{ href: item.href, label: item.label }] : item.children.map((c) => ({ href: c.href, label: c.label }))
 );
 
-export function Footer() {
+export async function Footer() {
+  const { phone, phoneHref, email, workHours } = await getSiteSettings();
+
   return (
     <footer className="border-t border-surface-border bg-surface-muted">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
@@ -35,16 +38,16 @@ export function Footer() {
           <h3 className="text-sm font-semibold text-navy-700">Контакты</h3>
           <ul className="mt-3 space-y-2 text-sm text-navy-500">
             <li>
-              <a href={company.phoneHref} className="hover:text-navy-800">
-                {company.phone}
+              <a href={phoneHref} className="hover:text-navy-800">
+                {phone}
               </a>
             </li>
             <li>
-              <a href={`mailto:${company.email}`} className="hover:text-navy-800">
-                {company.email}
+              <a href={`mailto:${email}`} className="hover:text-navy-800">
+                {email}
               </a>
             </li>
-            <li>{company.workHours}</li>
+            <li>{workHours}</li>
           </ul>
         </div>
 

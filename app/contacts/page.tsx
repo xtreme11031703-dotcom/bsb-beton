@@ -3,6 +3,7 @@ import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import YandexMap from '@/components/YandexMap';
 import { company } from '@/lib/company';
+import { getSiteSettings } from '@/lib/site-settings';
 import { getPublicPlantLocations } from '@/app/actions/plants';
 import { geocodeAddress } from '@/lib/yandex-geocoder';
 
@@ -11,8 +12,13 @@ export const metadata = {
   description: 'Телефон, email и адреса заводов БСБ в Москве и Московской области.',
 };
 
+// Телефон/email/часы читаются из /admin/settings (SiteSettings) — без
+// force-dynamic страница закешировалась бы статически при сборке.
+export const dynamic = 'force-dynamic';
+
 export default async function ContactsPage() {
   const plants = await getPublicPlantLocations();
+  const { phone, phoneHref, email, workHours } = await getSiteSettings();
 
   const headOfficeBranch = company.branches.find((b) => b.name === 'Главный офис');
   const headOfficeGeocoded =
@@ -34,7 +40,7 @@ export default async function ContactsPage() {
               <h1 className="max-w-2xl text-3xl font-bold leading-tight text-white sm:text-5xl">
                 Контакты
               </h1>
-              <p className="mt-4 max-w-xl text-lg text-navy-100">{company.workHours}</p>
+              <p className="mt-4 max-w-xl text-lg text-navy-100">{workHours}</p>
             </Reveal>
           </div>
         </section>
@@ -44,23 +50,23 @@ export default async function ContactsPage() {
             <Reveal>
               <div className="card h-full">
                 <h3 className="text-sm font-semibold text-navy-500">Телефон</h3>
-                <a href={company.phoneHref} className="mt-1 block text-xl font-bold text-navy-800">
-                  {company.phone}
+                <a href={phoneHref} className="mt-1 block text-xl font-bold text-navy-800">
+                  {phone}
                 </a>
               </div>
             </Reveal>
             <Reveal delayMs={80}>
               <div className="card h-full">
                 <h3 className="text-sm font-semibold text-navy-500">Email</h3>
-                <a href={`mailto:${company.email}`} className="mt-1 block text-xl font-bold text-navy-800">
-                  {company.email}
+                <a href={`mailto:${email}`} className="mt-1 block text-xl font-bold text-navy-800">
+                  {email}
                 </a>
               </div>
             </Reveal>
             <Reveal delayMs={160}>
               <div className="card h-full">
                 <h3 className="text-sm font-semibold text-navy-500">Режим работы</h3>
-                <p className="mt-1 text-xl font-bold text-navy-800">{company.workHours}</p>
+                <p className="mt-1 text-xl font-bold text-navy-800">{workHours}</p>
               </div>
             </Reveal>
           </div>

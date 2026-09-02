@@ -21,6 +21,11 @@ export const metadata = {
   description: 'Товарный бетон, растворы и аренда бетононасоса — марки, характеристики и цены за м³.',
 };
 
+// Футер показывает контакты из /admin/settings (SiteSettings) — без
+// force-dynamic страница закешировалась бы статически при сборке и правка
+// телефона/email админом не долетала бы до посетителей без пересборки сайта.
+export const dynamic = 'force-dynamic';
+
 export default function CatalogPage() {
   return (
     <div className="min-h-screen">

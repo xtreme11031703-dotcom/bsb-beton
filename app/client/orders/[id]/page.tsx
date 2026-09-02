@@ -5,12 +5,13 @@ import { getClientOrderById } from '@/app/actions/orders';
 import { ORDER_STATUS_LABELS } from '@/lib/utils';
 import { describeCartItem, describeCartItemQuantity, formatPrice } from '@/lib/catalog';
 import { StatusBadge } from '@/components/StatusBadge';
-import { company } from '@/lib/company';
+import { getSiteSettings } from '@/lib/site-settings';
 import { OrderStatusPoller } from './OrderStatusPoller';
 
 export default async function ClientOrderDetailPage({ params }: { params: { id: string } }) {
   const order = await getClientOrderById(params.id);
   if (!order) notFound();
+  const { phone, phoneHref } = await getSiteSettings();
 
   return (
     <div className="min-h-screen bg-surface-muted">
@@ -35,7 +36,7 @@ export default async function ClientOrderDetailPage({ params }: { params: { id: 
           {order.plant && (
             <p className="mt-2 text-sm text-navy-500">
               Завод подтвердил заказ и готовит доставку. Данные завода не разглашаются — если возникнут
-              вопросы, свяжитесь с нами: <a href={company.phoneHref} className="font-medium text-navy-700 underline">{company.phone}</a>.
+              вопросы, свяжитесь с нами: <a href={phoneHref} className="font-medium text-navy-700 underline">{phone}</a>.
             </p>
           )}
 

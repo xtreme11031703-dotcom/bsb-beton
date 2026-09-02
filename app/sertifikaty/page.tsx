@@ -4,13 +4,20 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import { company } from '@/lib/company';
+import { getSiteSettings } from '@/lib/site-settings';
 
 export const metadata = {
   title: `Сертификаты — ${company.fullName}`,
   description: 'Декларации соответствия ГОСТ на товарный бетон и растворные смеси.',
 };
 
-export default function SertifikatyPage() {
+// Телефон читается из /admin/settings (SiteSettings) — без force-dynamic
+// страница закешировалась бы статически при сборке.
+export const dynamic = 'force-dynamic';
+
+export default async function SertifikatyPage() {
+  const { phone, phoneHref } = await getSiteSettings();
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -70,8 +77,8 @@ export default function SertifikatyPage() {
             <p className="mt-8 max-w-2xl text-sm text-navy-500">
               Оригиналы документов и паспорт качества на конкретную партию предоставляются вместе
               с поставкой или по запросу — свяжитесь с нами по телефону{' '}
-              <a href={company.phoneHref} className="font-medium text-navy-800 underline underline-offset-2">
-                {company.phone}
+              <a href={phoneHref} className="font-medium text-navy-800 underline underline-offset-2">
+                {phone}
               </a>
               .
             </p>

@@ -4,6 +4,7 @@ import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import YandexMap from '@/components/YandexMap';
 import { company } from '@/lib/company';
+import { getSiteSettings } from '@/lib/site-settings';
 import { getPublicPlantLocations } from '@/app/actions/plants';
 import { geocodeAddress } from '@/lib/yandex-geocoder';
 
@@ -12,8 +13,13 @@ export const metadata = {
   description: 'Доставляем товарный бетон и растворы в города Московской области с ближайшего завода.',
 };
 
+// Телефон читается из /admin/settings (SiteSettings) — без force-dynamic
+// страница закешировалась бы статически при сборке.
+export const dynamic = 'force-dynamic';
+
 export default async function DostavkaPoMoPage() {
   const plants = await getPublicPlantLocations();
+  const { phone, phoneHref } = await getSiteSettings();
 
   const headOfficeBranch = company.branches.find((b) => b.name === 'Главный офис');
   const headOfficeGeocoded =
@@ -130,8 +136,8 @@ export default async function DostavkaPoMoPage() {
                   Позвоните нам — уточним ближайший завод и стоимость доставки на ваш адрес.
                 </p>
               </div>
-              <a href={company.phoneHref} className="btn-primary shrink-0">
-                {company.phone}
+              <a href={phoneHref} className="btn-primary shrink-0">
+                {phone}
               </a>
             </div>
           </Reveal>

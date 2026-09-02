@@ -5,6 +5,7 @@ import { Reveal } from '@/components/Reveal';
 import { CountUp } from '@/components/CountUp';
 import YandexMap from '@/components/YandexMap';
 import { company } from '@/lib/company';
+import { getSiteSettings } from '@/lib/site-settings';
 import { getPublicPlantLocations } from '@/app/actions/plants';
 import { geocodeAddress } from '@/lib/yandex-geocoder';
 import { PLANT_PHOTO } from '@/lib/category-photos';
@@ -34,8 +35,15 @@ const benefits = [
   },
 ];
 
+// Часы работы на главной и контакты в футере теперь читаются из
+// /admin/settings (SiteSettings) — без force-dynamic страница закешировалась
+// бы статически при сборке и правка админом не долетала бы до посетителей
+// без пересборки сайта.
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   const plants = await getPublicPlantLocations();
+  const { workHours } = await getSiteSettings();
 
   // Главный офис не хранится в таблице заводов (это не производственная
   // площадка) — геокодируем его адрес из company.branches один раз на
@@ -70,7 +78,7 @@ export default async function HomePage() {
 
           <div className="relative mx-auto grid max-w-6xl gap-10 px-4 pb-28 pt-16 sm:px-6 sm:pt-24 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-8">
             <div>
-              <span className="eyebrow">🕐 Работаем ежедневно, {company.workHours.split(', ')[1] ?? '6:00–22:00'}</span>
+              <span className="eyebrow">🕐 Работаем ежедневно, {workHours.split(', ')[1] ?? '6:00–22:00'}</span>
 
               <h1 className="mt-6 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tightest text-white sm:text-6xl">
                 Бетон с доставкой{' '}

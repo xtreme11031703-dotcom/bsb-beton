@@ -3,6 +3,7 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import { company } from '@/lib/company';
+import { getSiteSettings } from '@/lib/site-settings';
 
 export const metadata = {
   title: `Реквизиты — ${company.fullName}`,
@@ -27,7 +28,13 @@ const bankRows: Array<[string, string]> = [
   ['Корреспондентский счёт', company.requisites.correspondentAccount],
 ];
 
-export default function RekvizityPage() {
+// Телефон читается из /admin/settings (SiteSettings) — без force-dynamic
+// страница закешировалась бы статически при сборке.
+export const dynamic = 'force-dynamic';
+
+export default async function RekvizityPage() {
+  const { phone, phoneHref } = await getSiteSettings();
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -88,8 +95,8 @@ export default function RekvizityPage() {
                   Свяжитесь с нами — вышлем полный комплект документов и подготовим счёт.
                 </p>
               </div>
-              <a href={company.phoneHref} className="btn-primary shrink-0">
-                {company.phone}
+              <a href={phoneHref} className="btn-primary shrink-0">
+                {phone}
               </a>
             </div>
           </Reveal>

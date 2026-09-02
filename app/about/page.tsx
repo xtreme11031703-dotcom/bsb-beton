@@ -13,6 +13,10 @@ export const metadata = {
   description: company.description,
 };
 
+// См. комментарий в app/catalog/page.tsx — та же причина (футер с контактами
+// из /admin/settings).
+export const dynamic = 'force-dynamic';
+
 export default function AboutPage() {
   return (
     <div className="min-h-screen">

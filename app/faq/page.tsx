@@ -3,13 +3,20 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import { company } from '@/lib/company';
+import { getSiteSettings } from '@/lib/site-settings';
 
 export const metadata = {
   title: `Вопросы и ответы — ${company.fullName}`,
   description: 'Ответы на частые вопросы о заказе, оплате и доставке бетона.',
 };
 
-export default function FaqPage() {
+// Вопросы-ответы и телефон читаются из /admin/settings (SiteSettings) — без
+// force-dynamic страница закешировалась бы статически при сборке.
+export const dynamic = 'force-dynamic';
+
+export default async function FaqPage() {
+  const { phone, phoneHref, faq } = await getSiteSettings();
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -30,7 +37,7 @@ export default function FaqPage() {
 
         <section className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
           <div className="flex flex-col gap-3">
-            {company.faq.map((item, i) => (
+            {faq.map((item, i) => (
               <Reveal key={item.question} delayMs={i * 60}>
                 <details className="group card cursor-pointer !p-0 open:shadow-lift">
                   <summary className="flex list-none items-center justify-between gap-4 px-5 py-4 font-medium text-navy-800 [&::-webkit-details-marker]:hidden">
@@ -59,8 +66,8 @@ export default function FaqPage() {
                 <h2 className="text-xl font-semibold text-white">Не нашли ответ?</h2>
                 <p className="mt-1 text-sm text-navy-200">Напишите нашему боту в Telegram или позвоните напрямую.</p>
               </div>
-              <a href={company.phoneHref} className="btn-primary shrink-0">
-                {company.phone}
+              <a href={phoneHref} className="btn-primary shrink-0">
+                {phone}
               </a>
             </div>
           </Reveal>
